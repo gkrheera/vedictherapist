@@ -2,9 +2,8 @@
  * JyotishTherapist Cloudflare Worker Backend (v5.1.0 - Production Ready)
  *
  * This version uses the '/functions' directory structure required by Cloudflare Pages
- * for automatic deployment. It correctly handles routing for the Pages deployment.
- * - API requests to '/astrology' are proxied to the ProKerala API.
- * - All other requests are passed to the Cloudflare Pages static asset server.
+ * for automatic deployment. It correctly handles routing and replicates the original
+ * Netlify function's logic of making three parallel API calls and merging the results.
  */
 
 // A simple in-memory cache for the access token to improve performance.
@@ -73,7 +72,6 @@ const processApiResponse = async (res, name) => {
 
 /**
  * The main fetch handler for Cloudflare Pages Functions.
- * This is the new syntax required for Pages Functions.
  * @param {object} context The context object for the function.
  * @returns {Promise<Response>} The response to the client.
  */
@@ -81,7 +79,8 @@ export async function onRequest(context) {
     const { request, env } = context;
     const url = new URL(request.url);
 
-    // If the path starts with '/astrology', handle it as an API request.
+    // This function acts as a proxy for all /astrology/* calls.
+    // The specific endpoint is determined by the frontend.
     if (url.pathname.startsWith('/astrology')) {
         try {
             if (!env.PROKERALA_CLIENT_ID || !env.PROKERALA_CLIENT_SECRET) {
@@ -95,15 +94,33 @@ export async function onRequest(context) {
 
             const accessToken = await getAccessToken(env.PROKERALA_CLIENT_ID, env.PROKERALA_CLIENT_SECRET);
             const headers = { 'Authorization': `Bearer ${accessToken}` };
-            
-            // Reconstruct the target API URL by removing our '/astrology' prefix
-            const apiPath = url.pathname.replace('/astrology', '');
-            const targetUrl = `https://api.prokerala.com/v2/astrology${apiPath}${queryString}`;
 
+            // We now replicate the original Netlify function's logic.
+            // The frontend makes ONE call to /astrology, and we make THREE to the API.
+            const kundliUrl = `https://api.prokerala.com/v2/astrology/kundli${queryString}`;
+            const dashaUrl = `https://api.prokerala.com/v2/astrology/dasha-periods${queryString}`;
+            const planetPositionUrl = `https://api.prokerala.com/v2/astrology/natal-planet-position${queryString}`;
 
-            const apiResponse = await fetch(targetUrl, { headers });
-            
-            return apiResponse;
+            const [kundliResponse, dashaResponse, planetPositionResponse] = await Promise.all([
+                fetch(kundliUrl, { headers }),
+                fetch(dashaUrl, { headers }),
+                fetch(planetPositionUrl, { headers }),
+            ]);
+
+            const kundliData = await processApiResponse(kundliResponse, 'Kundli');
+            const dashaData = await processApiResponse(dashaResponse, 'Dasha');
+            const planetPositionData = await processApiResponse(planetPositionResponse, 'Planet Position');
+
+            // Merge planetary data into the main kundli object, as the frontend expects.
+            if (planetPositionData.data) {
+                kundliData.data.ascendant = planetPositionData.data.ascendant;
+                kundliData.data.planet_positions = planetPositionData.data.planets;
+            }
+
+            // Return the combined data in the expected format.
+            return new Response(JSON.stringify({ kundliData, dashaData }), {
+                headers: { 'Content-Type': 'application/json' },
+            });
 
         } catch (error) {
             console.error('Cloudflare Function CRITICAL Error:', error.message);
@@ -111,9 +128,8 @@ export async function onRequest(context) {
         }
     }
 
-    // For all other requests, let Pages handle serving the static assets.
-    // In a '/functions' setup, you just need to not return a response,
-    // and the request will fall through to the static asset handler.
-    // The explicit 'env.ASSETS.fetch(request)' is not needed here.
+    // For all other requests (like loading the homepage), pass the request
+    // to the Cloudflare Pages static asset server.
     return context.next();
 }
+
