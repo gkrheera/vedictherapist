@@ -1,0 +1,21 @@
+# This file is the configuration for the Cloudflare Workers CLI, Wrangler.
+# It defines the project name, entry point for the worker, and how to serve static assets.
+
+name = "jyotish-therapist"
+main = "src/index.js"
+compatibility_date = "2024-05-12"
+
+# This section tells Wrangler to serve the static files (your index.html)
+# from the 'public' directory.
+[site]
+bucket = "./public"
+
+# This section is for environment variables.
+# It's recommended to use `wrangler secret put` for credentials instead of placing them here.
+# For example: `npx wrangler secret put PROKERALA_CLIENT_ID`
+[vars]
+PROKERALA_CLIENT_ID = "YOUR_CLIENT_ID_HERE"
+PROKERALA_CLIENT_SECRET = "YOUR_CLIENT_SECRET_HERE"
+
+# You must add your Cloudflare Account ID here for deployment.
+account_id = "YOUR_ACCOUNT_ID_HERE"
