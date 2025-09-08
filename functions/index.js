@@ -1,20 +1,50 @@
 /**
- * Cloudflare Worker for VedicTherapist v1.0.0
- * Based on the official Prokerala API proxy example.
+ * Cloudflare Worker for VedicTherapist v2.0.0
  * This worker securely forwards requests from the frontend to the Prokerala API,
  * handling authentication and caching the access token.
+ * This version is simplified to act as a pure proxy, matching the successful example code.
  */
-import fetchToken from './token';
 
-// This is the main entry point for the worker.
+let cachedToken = {
+    accessToken: null,
+    expiresAt: 0,
+};
+
+async function fetchToken(clientId, clientSecret) {
+    if (cachedToken.accessToken && cachedToken.expiresAt > Date.now()) {
+        return cachedToken.accessToken;
+    }
+
+    if (!clientId || !clientSecret) {
+        throw new Error('API credentials are not configured.');
+    }
+
+    const res = await fetch('https://api.prokerala.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=client_credentials&client_id=${clientId}&client_secret=${clientSecret}`,
+    });
+
+    if (!res.ok) {
+        throw new Error('Failed to fetch token from Prokerala API.');
+    }
+
+    const data = await res.json();
+    
+    cachedToken.accessToken = data.access_token;
+    cachedToken.expiresAt = Date.now() + (data.expires_in - 300) * 1000;
+
+    return cachedToken.accessToken;
+}
+
 export default {
-    async fetch(request, env, ctx) {
+    async fetch(request, env) {
         // Handle CORS preflight requests
         if (request.method === 'OPTIONS') {
             return new Response(null, {
                 headers: {
                     'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
                     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
                 },
             });
@@ -31,21 +61,17 @@ export default {
                     ...request.headers,
                     'Authorization': `Bearer ${token}`,
                 },
-                method: request.method,
-                body: request.body,
                 redirect: 'follow'
             });
             
             const apiResponse = await fetch(apiRequest);
 
-            // Create a new response with CORS headers to allow the browser to read it
             const responseWithCors = new Response(apiResponse.body, apiResponse);
             responseWithCors.headers.set('Access-Control-Allow-Origin', '*');
 
             return responseWithCors;
 
         } catch (e) {
-            console.error(e);
             const errorResponse = {
                 status: 'error',
                 errors: [{
@@ -64,4 +90,3 @@ export default {
         }
     },
 };
-
