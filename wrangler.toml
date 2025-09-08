@@ -3,10 +3,6 @@
 # with a backend Worker function.
 
 name = "vedictherapist"
-main = "functions/index.js" # **THE FIX: Point to the new directory**
+main = "functions/index.js" # **THE FIX: Point to the new standard directory**
 compatibility_date = "2024-05-12"
 compatibility_flags = ["nodejs_compat"]
-
-# This section is for local development and is not used in the Git-based deployment.
-# It can be safely removed for a cleaner production config.
-[vars]
