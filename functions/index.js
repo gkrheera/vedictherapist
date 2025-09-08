@@ -1,9 +1,9 @@
 /**
- * JyotishTherapist Cloudflare Worker Backend (v5.1.0 - Production Ready)
+ * JyotishTherapist Cloudflare Worker Backend (v5.2.0 - Production Ready)
  *
- * This version uses the '/functions' directory structure required by Cloudflare Pages
- * for automatic deployment. It correctly handles routing and replicates the original
- * Netlify function's logic of making three parallel API calls and merging the results.
+ * This version uses the '/functions' directory structure and the onRequest handler,
+ * which are the standard conventions for Cloudflare Pages Functions. This allows
+ * for automatic deployment without a wrangler.toml file.
  */
 
 // A simple in-memory cache for the access token to improve performance.
@@ -80,7 +80,6 @@ export async function onRequest(context) {
     const url = new URL(request.url);
 
     // This function acts as a proxy for all /astrology/* calls.
-    // The specific endpoint is determined by the frontend.
     if (url.pathname.startsWith('/astrology')) {
         try {
             if (!env.PROKERALA_CLIENT_ID || !env.PROKERALA_CLIENT_SECRET) {
@@ -95,8 +94,6 @@ export async function onRequest(context) {
             const accessToken = await getAccessToken(env.PROKERALA_CLIENT_ID, env.PROKERALA_CLIENT_SECRET);
             const headers = { 'Authorization': `Bearer ${accessToken}` };
 
-            // We now replicate the original Netlify function's logic.
-            // The frontend makes ONE call to /astrology, and we make THREE to the API.
             const kundliUrl = `https://api.prokerala.com/v2/astrology/kundli${queryString}`;
             const dashaUrl = `https://api.prokerala.com/v2/astrology/dasha-periods${queryString}`;
             const planetPositionUrl = `https://api.prokerala.com/v2/astrology/natal-planet-position${queryString}`;
@@ -111,13 +108,11 @@ export async function onRequest(context) {
             const dashaData = await processApiResponse(dashaResponse, 'Dasha');
             const planetPositionData = await processApiResponse(planetPositionResponse, 'Planet Position');
 
-            // Merge planetary data into the main kundli object, as the frontend expects.
             if (planetPositionData.data) {
                 kundliData.data.ascendant = planetPositionData.data.ascendant;
                 kundliData.data.planet_positions = planetPositionData.data.planets;
             }
 
-            // Return the combined data in the expected format.
             return new Response(JSON.stringify({ kundliData, dashaData }), {
                 headers: { 'Content-Type': 'application/json' },
             });
@@ -128,8 +123,8 @@ export async function onRequest(context) {
         }
     }
 
-    // For all other requests (like loading the homepage), pass the request
-    // to the Cloudflare Pages static asset server.
+    // For all other requests, pass them to the Pages static asset handler.
+    // This is what serves your index.html file.
     return context.next();
 }
 
