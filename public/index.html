@@ -257,7 +257,7 @@
             
             async function fetchAstroData(endpoint, params) {
                 // IMPORTANT: Replace this with your actual worker URL after deployment
-                const workerUrl = 'https://87a1cc63.vedictherapist.pages.dev/'; // <-- PASTE YOUR URL HERE
+                const workerUrl = 'https://c1b8c4ce.vedictherapist.pages.dev'; // <-- PASTE YOUR URL HERE
                 const url = new URL(endpoint.startsWith('/') ? endpoint.substring(1) : endpoint, workerUrl);
                 
                 Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
