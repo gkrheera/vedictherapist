@@ -1,7 +1,8 @@
 /**
- * Cloudflare Pages Function for VedicTherapist v7.0.0 (Definitive Fix)
- * This function manually constructs the final fetch request to prevent re-encoding of the '+' sign,
- * which has been the root cause of the persistent date format error.
+ * Cloudflare Pages Function for VedicTherapist v8.0.0 (Final Architecture)
+ * This version precisely mirrors the official Prokerala Cloudflare example.
+ * It correctly reconstructs the request object without manually decoding the URL,
+ * which is the definitive fix for the persistent date encoding issue.
  */
 
 let cachedToken = {
@@ -32,7 +33,7 @@ async function fetchToken(clientId, clientSecret) {
 }
 
 export async function onRequest(context) {
-    const { request, env, params } = context;
+    const { request, env } = context;
 
     if (request.method === 'OPTIONS') {
         return new Response(null, {
@@ -47,23 +48,24 @@ export async function onRequest(context) {
     try {
         const token = await fetchToken(env.CLIENT_ID, env.CLIENT_SECRET);
         
-        const incomingUrl = new URL(request.url);
-        const path = `/${params.path.join('/')}`;
+        // ** THE DEFINITIVE FIX **
+        // Reconstruct the URL, pointing it to the Prokerala API endpoint.
+        // This is the method used in the official example. It correctly
+        // preserves the URL encoding from the original browser request.
+        const url = new URL(request.url);
         
-        // THE FIX: Decode the query string from the incoming browser request.
-        // This converts '%2B' back into '+', solving the primary issue.
-        const decodedQueryString = decodeURIComponent(incomingUrl.search);
+        // The original request is to /api/v2/..., we need to remove /api
+        url.pathname = url.pathname.replace(/^\/api/, '');
+        url.hostname = 'api.prokerala.com';
         
-        const targetUrl = `https://api.prokerala.com${path}${decodedQueryString}`;
-
-        // Manually make the fetch request without using a Request object,
-        // which prevents the '+' from being re-encoded.
-        const apiResponse = await fetch(targetUrl, {
+        const apiRequest = new Request(url, {
             headers: {
                 'Authorization': `Bearer ${token}`,
             },
             redirect: 'follow'
         });
+        
+        const apiResponse = await fetch(apiRequest);
 
         const responseWithCors = new Response(apiResponse.body, apiResponse);
         responseWithCors.headers.set('Access-Control-Allow-Origin', '*');
