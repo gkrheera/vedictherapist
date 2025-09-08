@@ -1,5 +1,5 @@
-<!-- JyotishTherapist Frontend v3.1.2 (Production Ready on Cloudflare) -->
-<!-- No changes needed here, but version bumped for clarity. -->
+<!-- JyotishTherapist Frontend v3.1.3 (Production Ready on Cloudflare) -->
+<!-- No changes needed here, version bumped for clarity. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -257,7 +257,7 @@
             
             async function fetchAstroData(queryString) {
                 try {
-                    // **THE FIX: Point to the correct relative path for the worker**
+                    // This now points to the correct relative path for the Pages Function.
                     const response = await fetch(`/astrology?${queryString}`);
                     if (!response.ok) {
                         let errorMsg = `An error occurred in the serverless function (Status: ${response.status}).`;
@@ -271,7 +271,6 @@
                         }
                         throw new Error(errorMsg);
                     }
-                    // The backend now returns the merged data structure correctly.
                     return await response.json();
 
                 } catch (error) {
