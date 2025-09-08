@@ -1,7 +1,7 @@
 # This file is the configuration for the Cloudflare Workers CLI, Wrangler.
 # It defines the project name, entry point for the worker, and how to serve static assets.
 
-name = "jyotish-therapist"
+name = "vedictherapist"
 main = "src/index.js"
 compatibility_date = "2024-05-12"
 
