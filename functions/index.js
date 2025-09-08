@@ -1,9 +1,9 @@
 /**
- * JyotishTherapist Cloudflare Worker Backend (v5.2.0 - Production Ready)
+ * JyotishTherapist Cloudflare Worker Backend (v5.3.0 - Production Ready)
  *
  * This version uses the '/functions' directory structure and the onRequest handler,
- * which are the standard conventions for Cloudflare Pages Functions. This allows
- * for automatic deployment without a wrangler.toml file.
+ * which are the standard conventions for Cloudflare Pages Functions.
+ * This file is the single source of truth for the backend.
  */
 
 // A simple in-memory cache for the access token to improve performance.
@@ -16,9 +16,6 @@ const TOKEN_URL = 'https://api.prokerala.com/token';
 
 /**
  * Gets a valid OAuth 2.0 access token, using a cache to avoid unnecessary requests.
- * @param {string} clientId Your ProKerala Client ID from Cloudflare secrets.
- * @param {string} clientSecret Your ProKerala Client Secret from Cloudflare secrets.
- * @returns {Promise<string>} The access token.
  */
 async function getAccessToken(clientId, clientSecret) {
     if (cachedToken.accessToken && cachedToken.expiresAt > Date.now() + 300 * 1000) {
@@ -52,9 +49,6 @@ async function getAccessToken(clientId, clientSecret) {
 
 /**
  * Safely parse the response from the ProKerala API.
- * @param {Response} res The fetch Response object.
- * @param {string} name The name of the API endpoint for logging.
- * @returns {Promise<Object>} The parsed JSON data.
  */
 const processApiResponse = async (res, name) => {
     if (!res.ok) {
@@ -72,14 +66,13 @@ const processApiResponse = async (res, name) => {
 
 /**
  * The main fetch handler for Cloudflare Pages Functions.
- * @param {object} context The context object for the function.
- * @returns {Promise<Response>} The response to the client.
+ * This function intercepts all incoming requests.
  */
 export async function onRequest(context) {
-    const { request, env } = context;
+    const { request, env, next } = context;
     const url = new URL(request.url);
 
-    // This function acts as a proxy for all /astrology/* calls.
+    // If the request is for our API endpoint, proxy it to ProKerala.
     if (url.pathname.startsWith('/astrology')) {
         try {
             if (!env.PROKERALA_CLIENT_ID || !env.PROKERALA_CLIENT_SECRET) {
@@ -123,8 +116,8 @@ export async function onRequest(context) {
         }
     }
 
-    // For all other requests, pass them to the Pages static asset handler.
-    // This is what serves your index.html file.
-    return context.next();
+    // For all other requests (e.g., '/', '/styles.css'), pass them to the 
+    // Cloudflare Pages static asset handler. This is what serves your index.html.
+    return next();
 }
 
