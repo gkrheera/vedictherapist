@@ -1,5 +1,5 @@
 {
-  "name": "vedictherapist-cloudflare",
+  "name": "vedictherapist",
   "version": "1.0.0",
   "private": true,
   "main": "functions/index.js",
