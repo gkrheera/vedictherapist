@@ -1,7 +1,12 @@
+# This is a configuration file for Wrangler, the command-line interface for Cloudflare Workers.
+# The presence of this file tells Cloudflare Pages that this is an advanced project
+# with a backend Worker function.
+
 name = "vedictherapist"
-main = "src/index.js"
-compatibility_date = "2025-09-08"
+main = "functions/index.js" # **THE FIX: Point to the new directory**
+compatibility_date = "2024-05-12"
+compatibility_flags = ["nodejs_compat"]
 
-# Point to the directory containing your static assets.
-pages_build_output_dir = "public"
-
+# This section is for local development and is not used in the Git-based deployment.
+# It can be safely removed for a cleaner production config.
+[vars]
