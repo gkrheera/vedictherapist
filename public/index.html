@@ -1,5 +1,5 @@
-<!-- JyotishTherapist Frontend v5.1.0 (Production Ready) -->
-<!-- Updated to use the new "vedictherapist" Cloudflare Worker backend. -->
+<!-- JyotishTherapist Frontend v6.0.0 (Production Ready) -->
+<!-- Final version with simplified single API call architecture. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -191,8 +191,7 @@
             // --- STATE MANAGEMENT ---
             const appState = {
                 birthDetails: null,
-                kundliData: null,
-                dashaData: null,
+                astroData: null,
                 coordinates: null,
                 chartData: {
                     ascendant: '',
@@ -255,10 +254,10 @@
                 }
             }
             
-            async function fetchAstroData(endpoint, params) {
-                // IMPORTANT: Replace this with your actual worker URL after deployment
-                const workerUrl = 'https://vedictherapist.pages.dev'; // <-- PASTE YOUR URL HERE
-                const url = new URL(endpoint.startsWith('/') ? endpoint.substring(1) : endpoint, workerUrl);
+            async function fetchAstroData(params) {
+                const workerUrl = 'https://vedictherapist.pages.dev';
+                const endpoint = '/v2/astrology/kundli/advanced';
+                const url = new URL(endpoint.substring(1), workerUrl);
                 
                 Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
 
@@ -468,19 +467,18 @@
             function updateUI() {
                 document.getElementById('chart-name').textContent = appState.birthDetails.name;
                 
-                const { ascendant, planet_positions: planets, nakshatra_details } = appState.kundliData.data;
+                const { ascendant, planet_positions, nakshatra_details, dasha_periods } = appState.astroData.data;
 
-                if (!planets || !Array.isArray(planets) || !nakshatra_details || !ascendant) {
-                    console.error("Required data (ascendant, planets, or nakshatra_details) is missing in the API response:", appState.kundliData.data);
+                if (!planet_positions || !Array.isArray(planet_positions) || !nakshatra_details || !ascendant || !dasha_periods) {
+                    console.error("Required data is missing in the API response:", appState.astroData.data);
                     showError("Could not retrieve complete astrological data from the API. The chart cannot be generated.");
                     return;
                 }
 
                 const moonSign = nakshatra_details.chandra_rasi.name;
                 const sunSign = nakshatra_details.soorya_rasi.name;
-                const dashaPeriods = appState.dashaData.data.dasha_periods;
                 const today = new Date();
-                const currentDasha = dashaPeriods.find(d => new Date(d.start_date) <= today && new Date(d.end_date) >= today);
+                const currentDasha = dasha_periods.find(d => new Date(d.start) <= today && new Date(d.end) >= today);
                 
                 document.getElementById('core-identity').innerHTML = `
                     <p><strong class="font-semibold text-slate-200 w-32 inline-block">Ascendant:</strong> ${ascendant}</p>
@@ -490,7 +488,7 @@
                 `;
 
                 let planetHTML = '<ul class="space-y-1">';
-                planets.forEach(p => {
+                planet_positions.forEach(p => {
                     planetHTML += `<li><strong class="font-semibold text-slate-200 w-20 inline-block">${p.name}:</strong> ${p.sign} (House ${p.house})</li>`;
                 });
                 planetHTML += '</ul>';
@@ -498,7 +496,7 @@
                 
                 appState.chartData.ascendant = ascendant;
                 appState.chartData.planets = {};
-                planets.forEach(p => {
+                planet_positions.forEach(p => {
                     appState.chartData.planets[signData.short[p.name]] = p.sign;
                 });
                 
@@ -568,25 +566,12 @@
                         ayanamsa: 1
                     };
 
-                    const [kundliResult, dashaResult, planetResult] = await Promise.all([
-                        fetchAstroData('/v2/astrology/kundli', params),
-                        fetchAstroData('/v2/astrology/dasha-periods', params),
-                        fetchAstroData('/v2/astrology/natal-planet-position', params)
-                    ]);
-                    
-                    // Merge the results
-                    const mergedKundliData = kundliResult.data;
-                    mergedKundliData.ascendant = planetResult.data.ascendant;
-                    mergedKundliData.planet_positions = planetResult.data.planets;
-                    
-                    appState.kundliData = { data: mergedKundliData };
-                    appState.dashaData = dashaResult;
+                    appState.astroData = await fetchAstroData(params);
                     
                     updateUI();
 
                 } catch (error) {
                     console.error('Failed to process astrological data:', error);
-                    // The showError function is already called inside fetchAstroData
                 } finally {
                     calculateBtn.disabled = false;
                     calculateBtn.textContent = 'Generate Chart';
