@@ -1,5 +1,5 @@
-<!-- JyotishTherapist Frontend v6.0.0 (Production Ready) -->
-<!-- Final version with simplified single API call architecture. -->
+<!-- JyotishTherapist Frontend v7.0.0 (Production Ready) -->
+<!-- Corrected to use the /api proxy route -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -256,8 +256,11 @@
             
             async function fetchAstroData(params) {
                 const workerUrl = 'https://vedictherapist.pages.dev';
-                const endpoint = '/v2/astrology/kundli/advanced';
-                const url = new URL(endpoint.substring(1), workerUrl);
+                const prokeralaEndpoint = '/v2/astrology/kundli/advanced';
+                // Construct the correct path to the proxy API endpoint
+                const apiEndpoint = `/api${prokeralaEndpoint}`;
+
+                const url = new URL(apiEndpoint, workerUrl);
                 
                 Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
 
