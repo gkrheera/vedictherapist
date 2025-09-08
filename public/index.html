@@ -1,5 +1,5 @@
-<!-- JyotishTherapist Frontend v3.1.4 (Production Ready on Cloudflare) -->
-<!-- No changes needed here, version bumped for clarity. -->
+<!-- JyotishTherapist Frontend v5.1.0 (Production Ready) -->
+<!-- Updated to use the new "vedictherapist" Cloudflare Worker backend. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -255,26 +255,23 @@
                 }
             }
             
-            async function fetchAstroData(queryString) {
-                try {
-                    // This now points to the correct relative path for the Pages Function.
-                    const response = await fetch(`/astrology?${queryString}`);
-                    if (!response.ok) {
-                        let errorMsg = `An error occurred in the serverless function (Status: ${response.status}).`;
-                        try {
-                            const errorData = await response.json();
-                            if (errorData.error) {
-                                errorMsg = errorData.error;
-                            }
-                        } catch (e) {
-                           // Ignore if the error response isn't JSON
-                        }
-                        throw new Error(errorMsg);
-                    }
-                    return await response.json();
+            async function fetchAstroData(endpoint, params) {
+                // IMPORTANT: Replace this with your actual worker URL after deployment
+                const workerUrl = 'https://87a1cc63.vedictherapist.pages.dev/'; // <-- PASTE YOUR URL HERE
+                const url = new URL(endpoint.startsWith('/') ? endpoint.substring(1) : endpoint, workerUrl);
+                
+                Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
 
+                try {
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    if (!response.ok) {
+                        const errorDetail = data.errors?.[0]?.detail || 'An unknown error occurred in the worker.';
+                        throw new Error(errorDetail);
+                    }
+                    return data;
                 } catch (error) {
-                    showError(`<strong>Error:</strong> ${error.message}`);
+                    showError(`<strong>API Call Failed:</strong> ${error.message}`);
                     throw error;
                 }
             }
@@ -565,22 +562,31 @@
                     const datetimeWithSeconds = appState.birthDetails.datetimeLocal + ':00';
                     const datetimeForApi = datetimeWithSeconds + offset;
                     
-                    const params = new URLSearchParams({
+                    const params = {
                         datetime: datetimeForApi,
                         coordinates: appState.coordinates,
                         ayanamsa: 1
-                    });
+                    };
 
-                    const queryString = params.toString();
-
-                    const { kundliData, dashaData } = await fetchAstroData(queryString);
+                    const [kundliResult, dashaResult, planetResult] = await Promise.all([
+                        fetchAstroData('/v2/astrology/kundli', params),
+                        fetchAstroData('/v2/astrology/dasha-periods', params),
+                        fetchAstroData('/v2/astrology/natal-planet-position', params)
+                    ]);
                     
-                    appState.kundliData = kundliData;
-                    appState.dashaData = dashaData;
+                    // Merge the results
+                    const mergedKundliData = kundliResult.data;
+                    mergedKundliData.ascendant = planetResult.data.ascendant;
+                    mergedKundliData.planet_positions = planetResult.data.planets;
+                    
+                    appState.kundliData = { data: mergedKundliData };
+                    appState.dashaData = dashaResult;
                     
                     updateUI();
+
                 } catch (error) {
                     console.error('Failed to process astrological data:', error);
+                    // The showError function is already called inside fetchAstroData
                 } finally {
                     calculateBtn.disabled = false;
                     calculateBtn.textContent = 'Generate Chart';
