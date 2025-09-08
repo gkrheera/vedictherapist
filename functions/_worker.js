@@ -1,7 +1,7 @@
 /**
- * Cloudflare Pages Function for VedicTherapist v4.0.0
+ * Cloudflare Pages Function for VedicTherapist v5.0.0
  * This function acts as a catch-all proxy for requests that are not static files.
- * It correctly reconstructs the URL and forwards it to the Prokerala API.
+ * It correctly handles CORS preflight checks and forwards requests to the Prokerala API.
  */
 
 let cachedToken = {
@@ -33,6 +33,17 @@ async function fetchToken(clientId, clientSecret) {
 
 export default {
     async fetch(request, env) {
+        // Handle CORS preflight requests (OPTIONS method)
+        if (request.method === 'OPTIONS') {
+            return new Response(null, {
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                },
+            });
+        }
+
         try {
             const token = await fetchToken(env.CLIENT_ID, env.CLIENT_SECRET);
             
@@ -55,8 +66,6 @@ export default {
             // Create a new response with CORS headers to allow the browser to read it
             const responseWithCors = new Response(apiResponse.body, apiResponse);
             responseWithCors.headers.set('Access-Control-Allow-Origin', '*');
-            responseWithCors.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-            responseWithCors.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
             return responseWithCors;
 
