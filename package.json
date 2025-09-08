@@ -1,5 +1,5 @@
 {
-  "name": "jyotish-therapist-cloudflare",
+  "name": "vedictherapist",
   "version": "1.0.0",
   "description": "Vedic Astrology Chart & AI Insights on Cloudflare Workers.",
   "private": true,
