@@ -1,5 +1,5 @@
-<!-- JyotishTherapist Frontend v7.0.0 (Production Ready) -->
-<!-- Corrected to use the /api proxy route -->
+<!-- JyotishTherapist Frontend v8.0.0 (Production Ready) -->
+<!-- Final version with correct multi-fetch API logic. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -254,28 +254,20 @@
                 }
             }
             
-            async function fetchAstroData(params) {
+            async function fetchViaProxy(prokeralaEndpoint, params) {
                 const workerUrl = 'https://vedictherapist.pages.dev';
-                const prokeralaEndpoint = '/v2/astrology/kundli/advanced';
-                // Construct the correct path to the proxy API endpoint
                 const apiEndpoint = `/api${prokeralaEndpoint}`;
-
                 const url = new URL(apiEndpoint, workerUrl);
                 
                 Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
 
-                try {
-                    const response = await fetch(url);
-                    const data = await response.json();
-                    if (!response.ok) {
-                        const errorDetail = data.errors?.[0]?.detail || 'An unknown error occurred in the worker.';
-                        throw new Error(errorDetail);
-                    }
-                    return data;
-                } catch (error) {
-                    showError(`<strong>API Call Failed:</strong> ${error.message}`);
-                    throw error;
+                const response = await fetch(url);
+                const data = await response.json();
+                if (!response.ok) {
+                    const errorDetail = data.errors?.[0]?.detail || 'An unknown error occurred in the worker.';
+                    throw new Error(errorDetail);
                 }
+                return data;
             }
 
             async function getAstrologicalInsight(question) {
@@ -470,10 +462,11 @@
             function updateUI() {
                 document.getElementById('chart-name').textContent = appState.birthDetails.name;
                 
-                const { ascendant, planet_positions, nakshatra_details, dasha_periods } = appState.astroData.data;
+                const { nakshatra_details, dasha_periods } = appState.astroData.kundli.data;
+                const { ascendant, planets } = appState.astroData.positions.data;
 
-                if (!planet_positions || !Array.isArray(planet_positions) || !nakshatra_details || !ascendant || !dasha_periods) {
-                    console.error("Required data is missing in the API response:", appState.astroData.data);
+                if (!planets || !Array.isArray(planets) || !nakshatra_details || !ascendant || !dasha_periods) {
+                    console.error("Required data is missing in the merged API response:", appState.astroData);
                     showError("Could not retrieve complete astrological data from the API. The chart cannot be generated.");
                     return;
                 }
@@ -491,7 +484,7 @@
                 `;
 
                 let planetHTML = '<ul class="space-y-1">';
-                planet_positions.forEach(p => {
+                planets.forEach(p => {
                     planetHTML += `<li><strong class="font-semibold text-slate-200 w-20 inline-block">${p.name}:</strong> ${p.sign} (House ${p.house})</li>`;
                 });
                 planetHTML += '</ul>';
@@ -499,7 +492,7 @@
                 
                 appState.chartData.ascendant = ascendant;
                 appState.chartData.planets = {};
-                planet_positions.forEach(p => {
+                planets.forEach(p => {
                     appState.chartData.planets[signData.short[p.name]] = p.sign;
                 });
                 
@@ -569,11 +562,20 @@
                         ayanamsa: 1
                     };
 
-                    appState.astroData = await fetchAstroData(params);
+                    const [kundliResult, positionsResult] = await Promise.all([
+                        fetchViaProxy('/v2/astrology/kundli/advanced', params),
+                        fetchViaProxy('/v2/astrology/natal-planet-position', params)
+                    ]);
+                    
+                    appState.astroData = {
+                        kundli: kundliResult,
+                        positions: positionsResult
+                    };
                     
                     updateUI();
 
                 } catch (error) {
+                    // showError is called inside fetchViaProxy
                     console.error('Failed to process astrological data:', error);
                 } finally {
                     calculateBtn.disabled = false;
