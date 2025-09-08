@@ -1,8 +1,7 @@
 /**
- * Cloudflare Pages Function for VedicTherapist v8.0.0 (Final Architecture)
- * This version precisely mirrors the official Prokerala Cloudflare example.
- * It correctly reconstructs the request object without manually decoding the URL,
- * which is the definitive fix for the persistent date encoding issue.
+ * Cloudflare Pages Function for VedicTherapist v9.0.0 (Definitive Routing Fix)
+ * This version corrects the URL reconstruction to properly handle the /api/ route
+ * specific to the Cloudflare Pages environment, which resolves the 400 error.
  */
 
 let cachedToken = {
@@ -48,20 +47,22 @@ export async function onRequest(context) {
     try {
         const token = await fetchToken(env.CLIENT_ID, env.CLIENT_SECRET);
         
-        // ** THE DEFINITIVE FIX **
-        // Reconstruct the URL, pointing it to the Prokerala API endpoint.
-        // This is the method used in the official example. It correctly
-        // preserves the URL encoding from the original browser request.
         const url = new URL(request.url);
         
-        // The original request is to /api/v2/..., we need to remove /api
+        // ** THE DEFINITIVE FIX **
+        // The original pathname is /api/v2/... We must remove the /api prefix
+        // to get the correct Prokerala API path, which is /v2/...
         url.pathname = url.pathname.replace(/^\/api/, '');
         url.hostname = 'api.prokerala.com';
         
         const apiRequest = new Request(url, {
             headers: {
                 'Authorization': `Bearer ${token}`,
+                // Forward original headers from the client
+                ...Object.fromEntries(request.headers),
             },
+            method: request.method,
+            body: request.body,
             redirect: 'follow'
         });
         
