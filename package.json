@@ -1,12 +1,12 @@
 {
-  "name": "vedictherapist",
+  "name": "vedictherapist-cloudflare",
   "version": "1.0.0",
   "private": true,
+  "main": "functions/index.js",
   "scripts": {
-    "start": "wrangler pages dev public"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
   }
 }
-
