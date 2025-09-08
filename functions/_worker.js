@@ -1,7 +1,7 @@
 /**
- * Cloudflare Pages Function for VedicTherapist v5.0.0
+ * Cloudflare Pages Function for VedicTherapist v5.1.0
  * This function acts as a catch-all proxy for requests that are not static files.
- * It correctly handles CORS preflight checks and forwards requests to the Prokerala API.
+ * It correctly handles CORS preflight checks and decodes the URL to fix date formatting issues.
  */
 
 let cachedToken = {
@@ -50,9 +50,13 @@ export default {
             const url = new URL(request.url);
             
             // Reconstruct the Prokerala API URL from the incoming request path
-            // e.g., https://vedictherapist.pages.dev/api/v2/astrology/kundli -> https://api.prokerala.com/v2/astrology/kundli
             const path = url.pathname.replace('/api/', '/');
-            const targetUrl = `https://api.prokerala.com${path}${url.search}`;
+            
+            // *** THE DEFINITIVE FIX ***
+            // Decode the query string to convert URL-encoded characters (like %2B) back to their original form (+)
+            const queryString = decodeURIComponent(url.search);
+            
+            const targetUrl = `https://api.prokerala.com${path}${queryString}`;
 
             const apiRequest = new Request(targetUrl, {
                 headers: {
@@ -87,3 +91,4 @@ export default {
         }
     }
 };
+
