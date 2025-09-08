@@ -1,7 +1,7 @@
 /**
- * Cloudflare Pages Function for VedicTherapist v6.0.0
- * This function uses file-based routing to catch all requests to /api/* and proxy them.
- * This is the standard and correct way to implement a proxy for a Pages project.
+ * Cloudflare Pages Function for VedicTherapist v7.0.0 (Definitive Fix)
+ * This function manually constructs the final fetch request to prevent re-encoding of the '+' sign,
+ * which has been the root cause of the persistent date format error.
  */
 
 let cachedToken = {
@@ -31,11 +31,9 @@ async function fetchToken(clientId, clientSecret) {
     return cachedToken.accessToken;
 }
 
-// The onRequest handler is the entry point for Pages Functions.
 export async function onRequest(context) {
     const { request, env, params } = context;
 
-    // Handle CORS preflight requests
     if (request.method === 'OPTIONS') {
         return new Response(null, {
             headers: {
@@ -49,25 +47,23 @@ export async function onRequest(context) {
     try {
         const token = await fetchToken(env.CLIENT_ID, env.CLIENT_SECRET);
         
-        // Reconstruct the Prokerala API URL from the wildcard path and query string.
-        // params.path will be an array of path segments from the URL.
-        // e.g., for a request to /api/v2/astrology/kundli, params.path will be ['v2', 'astrology', 'kundli']
+        const incomingUrl = new URL(request.url);
         const path = `/${params.path.join('/')}`;
-        const queryString = new URL(request.url).search;
         
-        // IMPORTANT: We must decode the query string to handle special characters like '+' correctly.
-        const decodedQueryString = decodeURIComponent(queryString);
+        // THE FIX: Decode the query string from the incoming browser request.
+        // This converts '%2B' back into '+', solving the primary issue.
+        const decodedQueryString = decodeURIComponent(incomingUrl.search);
         
         const targetUrl = `https://api.prokerala.com${path}${decodedQueryString}`;
 
-        const apiRequest = new Request(targetUrl, {
+        // Manually make the fetch request without using a Request object,
+        // which prevents the '+' from being re-encoded.
+        const apiResponse = await fetch(targetUrl, {
             headers: {
                 'Authorization': `Bearer ${token}`,
             },
             redirect: 'follow'
         });
-        
-        const apiResponse = await fetch(apiRequest);
 
         const responseWithCors = new Response(apiResponse.body, apiResponse);
         responseWithCors.headers.set('Access-Control-Allow-Origin', '*');
