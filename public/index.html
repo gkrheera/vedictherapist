@@ -258,7 +258,7 @@
             async function fetchAstroData(queryString) {
                 try {
                     // **THE FIX: Point to the correct relative path for the worker**
-                    const response = await fetch(`/astrology/kundli?${queryString}`);
+                    const response = await fetch(`/astrology?${queryString}`);
                     if (!response.ok) {
                         let errorMsg = `An error occurred in the serverless function (Status: ${response.status}).`;
                         try {
@@ -271,17 +271,8 @@
                         }
                         throw new Error(errorMsg);
                     }
-                     const combinedData = await response.json();
-
-                    // We need to make separate calls for dasha and planet positions now
-                    const dashaResponse = await fetch(`/astrology/dasha-periods?${queryString}`);
-                    const planetPosResponse = await fetch(`/astrology/natal-planet-position?${queryString}`);
-
-                    const dashaData = await dashaResponse.json();
-                    const planetPositionData = await planetPosResponse.json();
-
-                    return { kundliData: combinedData.kundliData, dashaData, planetPositionData };
-
+                    // The backend now returns the merged data structure correctly.
+                    return await response.json();
 
                 } catch (error) {
                     showError(`<strong>Error:</strong> ${error.message}`);
@@ -306,7 +297,7 @@
                 const systemPrompt = "You are an expert Vedic astrologer (Jyotishi). Analyze the provided birth chart data and answer the user's question based on the principles of Vedic astrology. Provide a clear, insightful, and easy-to-understand response. Do not use markdown formatting.";
 
                 const chartDetails = `The native has a ${appState.chartData.ascendant} Ascendant. The planetary positions are as follows: ${JSON.stringify(appState.chartData.planets)}.`;
-                const userQuery = `Based on this Vedic chart (${details}), please answer the following question: "${question}"`;
+                const userQuery = `Based on this Vedic chart (${chartDetails}), please answer the following question: "${question}"`;
 
                 const payload = {
                     contents: [{ parts: [{ text: userQuery }] }],
@@ -481,7 +472,7 @@
             function updateUI() {
                 document.getElementById('chart-name').textContent = appState.birthDetails.name;
                 
-                 const { ascendant, planet_positions: planets, nakshatra_details } = appState.kundliData.data;
+                const { ascendant, planet_positions: planets, nakshatra_details } = appState.kundliData.data;
 
                 if (!planets || !Array.isArray(planets) || !nakshatra_details || !ascendant) {
                     console.error("Required data (ascendant, planets, or nakshatra_details) is missing in the API response:", appState.kundliData.data);
@@ -583,14 +574,8 @@
 
                     const queryString = params.toString();
 
-                    const { kundliData, dashaData, planetPositionData } = await fetchAstroData(queryString);
-
-                    // Manually merge data before setting state
-                    if (planetPositionData && planetPositionData.data) {
-                        kundliData.data.ascendant = planetPositionData.data.ascendant;
-                        kundliData.data.planet_positions = planetPositionData.data.planets;
-                    }
-
+                    const { kundliData, dashaData } = await fetchAstroData(queryString);
+                    
                     appState.kundliData = kundliData;
                     appState.dashaData = dashaData;
                     
