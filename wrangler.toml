@@ -2,7 +2,6 @@ name = "vedictherapist"
 main = "src/index.js"
 compatibility_date = "2025-09-08"
 
-# This section tells Cloudflare Pages how to deploy your project.
-# It finds your backend worker in the `src` directory.
-[pages_build_output]
-functions = "src"
+# Point to the directory containing your static assets.
+pages_build_output_dir = "public"
+
