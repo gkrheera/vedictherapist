@@ -1,10 +1,10 @@
 /**
- * JyotishTherapist Cloudflare Worker Backend (v5.0.0 - Production Ready)
+ * JyotishTherapist Cloudflare Worker Backend (v5.1.0 - Production Ready)
  *
- * This version correctly handles routing for a Cloudflare Pages deployment.
+ * This version uses the '/functions' directory structure required by Cloudflare Pages
+ * for automatic deployment. It correctly handles routing for the Pages deployment.
  * - API requests to '/astrology' are proxied to the ProKerala API.
- * - All other requests (e.g., for the homepage '/') are passed to the
- * Cloudflare Pages static asset server to serve the frontend HTML.
+ * - All other requests are passed to the Cloudflare Pages static asset server.
  */
 
 // A simple in-memory cache for the access token to improve performance.
@@ -71,72 +71,49 @@ const processApiResponse = async (res, name) => {
     return res.json();
 };
 
+/**
+ * The main fetch handler for Cloudflare Pages Functions.
+ * This is the new syntax required for Pages Functions.
+ * @param {object} context The context object for the function.
+ * @returns {Promise<Response>} The response to the client.
+ */
+export async function onRequest(context) {
+    const { request, env } = context;
+    const url = new URL(request.url);
 
-export default {
-    /**
-     * Main fetch handler for the Cloudflare Worker.
-     * @param {Request} request The incoming request.
-     * @param {Object} env The environment variables (including secrets).
-     * @param {Object} ctx The execution context.
-     * @returns {Promise<Response>} The response to the client.
-     */
-    async fetch(request, env, ctx) {
-        const url = new URL(request.url);
-
-        // **THE FIX: Route traffic correctly.**
-        // If the path starts with '/astrology', handle it as an API request.
-        if (url.pathname.startsWith('/astrology')) {
-            try {
-                // Ensure API credentials are set
-                if (!env.PROKERALA_CLIENT_ID || !env.PROKERALA_CLIENT_SECRET) {
-                    return new Response(JSON.stringify({ error: 'API credentials are not set up in the Cloudflare environment.' }), { status: 500 });
-                }
-
-                // Extract the original query string (e.g., '?datetime=...&coordinates=...')
-                const queryString = url.search;
-                if (!queryString) {
-                    return new Response(JSON.stringify({ error: 'Missing required query parameters.' }), { status: 400 });
-                }
-
-                const accessToken = await getAccessToken(env.PROKERALA_CLIENT_ID, env.PROKERALA_CLIENT_SECRET);
-                const headers = { 'Authorization': `Bearer ${accessToken}` };
-
-                // Construct the target API URLs
-                const kundliUrl = `https://api.prokerala.com/v2/astrology/kundli${queryString}`;
-                const dashaUrl = `https://api.prokerala.com/v2/astrology/dasha-periods${queryString}`;
-                const planetPositionUrl = `https://api.prokerala.com/v2/astrology/natal-planet-position${queryString}`;
-
-                // Make API calls in parallel
-                const [kundliResponse, dashaResponse, planetPositionResponse] = await Promise.all([
-                    fetch(kundliUrl, { headers }),
-                    fetch(dashaUrl, { headers }),
-                    fetch(planetPositionUrl, { headers }),
-                ]);
-
-                // Process responses
-                const kundliData = await processApiResponse(kundliResponse, 'Kundli');
-                const dashaData = await processApiResponse(dashaResponse, 'Dasha');
-                const planetPositionData = await processApiResponse(planetPositionResponse, 'Planet Position');
-
-                // Merge data as before
-                if (planetPositionData.data) {
-                    kundliData.data.ascendant = planetPositionData.data.ascendant;
-                    kundliData.data.planet_positions = planetPositionData.data.planets;
-                }
-
-                return new Response(JSON.stringify({ kundliData, dashaData }), {
-                    headers: { 'Content-Type': 'application/json' },
-                });
-
-            } catch (error) {
-                console.error('Cloudflare Worker CRITICAL Error:', error.message);
-                return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    // If the path starts with '/astrology', handle it as an API request.
+    if (url.pathname.startsWith('/astrology')) {
+        try {
+            if (!env.PROKERALA_CLIENT_ID || !env.PROKERALA_CLIENT_SECRET) {
+                return new Response(JSON.stringify({ error: 'API credentials are not set up in the Cloudflare environment.' }), { status: 500 });
             }
+
+            const queryString = url.search;
+            if (!queryString) {
+                return new Response(JSON.stringify({ error: 'Missing required query parameters.' }), { status: 400 });
+            }
+
+            const accessToken = await getAccessToken(env.PROKERALA_CLIENT_ID, env.PROKERALA_CLIENT_SECRET);
+            const headers = { 'Authorization': `Bearer ${accessToken}` };
+            
+            // Reconstruct the target API URL by removing our '/astrology' prefix
+            const apiPath = url.pathname.replace('/astrology', '');
+            const targetUrl = `https://api.prokerala.com/v2/astrology${apiPath}${queryString}`;
+
+
+            const apiResponse = await fetch(targetUrl, { headers });
+            
+            return apiResponse;
+
+        } catch (error) {
+            console.error('Cloudflare Function CRITICAL Error:', error.message);
+            return new Response(JSON.stringify({ error: error.message }), { status: 500 });
         }
+    }
 
-        // **For all other requests, serve the static assets from the Pages deployment.**
-        // This will serve your `public/index.html`, etc.
-        return env.ASSETS.fetch(request);
-    },
-};
-
+    // For all other requests, let Pages handle serving the static assets.
+    // In a '/functions' setup, you just need to not return a response,
+    // and the request will fall through to the static asset handler.
+    // The explicit 'env.ASSETS.fetch(request)' is not needed here.
+    return context.next();
+}
