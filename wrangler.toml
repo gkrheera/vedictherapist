@@ -1,0 +1,11 @@
+# This file is the configuration for your Cloudflare Worker.
+# It tells Cloudflare the name of your service and where the main code file is.
+
+name = "vedictherapist"
+main = "src/index.js"
+compatibility_date = "2024-05-12"
+compatibility_flags = ["nodejs_compat"]
+
+# We are using encrypted secrets in the dashboard for credentials,
+# so this section is intentionally left blank for security.
+[vars]
