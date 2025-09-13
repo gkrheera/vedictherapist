@@ -1,4 +1,4 @@
-<!-- Version: 1.4 -->
+<!-- Version: 1.5 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -206,23 +206,25 @@
             chartError.textContent = '';
             chartLoader.classList.remove('hidden');
 
-            // **FIX**: Get values directly from the input elements for reliability.
             const coordinates = document.querySelector('input[name="coordinates"]').value;
             const datetimeValue = document.getElementById('datetime').value;
             const timezone = document.querySelector('input[name="timezone"]').value;
             
-            // **FIX**: More robust validation to check for empty values.
-            if (!coordinates || !datetimeValue || !timezone) {
-                chartError.textContent = 'Please select a valid date, time, and birth place.';
+            // **FIX**: Add more robust validation to check the timezone format.
+            // A valid timezone offset from the widget will be a string like "+05:30".
+            const isValidTimezone = typeof timezone === 'string' && (timezone.startsWith('+') || timezone.startsWith('-'));
+
+            if (!coordinates || !datetimeValue || !isValidTimezone) {
+                chartError.textContent = 'Please select a valid date, time, and birth place from the suggestions.';
                 chartLoader.classList.add('hidden');
-                console.error('Validation failed: Missing coordinates, datetime, or timezone value.');
+                console.error(`Validation failed: Missing or invalid data. Coords: ${coordinates}, DateTime: ${datetimeValue}, Timezone: ${timezone}`);
                 return;
             }
 
             // The API requires the timezone offset to be part of the datetime string.
+            // Example: 2004-02-12T15:19:21+05:30
             const apiDatetime = `${datetimeValue}:00${timezone}`;
             
-            // Use the path to our serverless function
             const FUNCTION_ENDPOINT = '/.netlify/functions/generate-chart';
 
             try {
@@ -233,8 +235,8 @@
                     body: JSON.stringify({
                         datetime: apiDatetime,
                         coordinates: coordinates,
-                        ayanamsa: '1', // **FIX**: Use the correct numeric value for Lahiri.
-                        chart_type: 'rasi', // **FIX**: Add the mandatory chart_type parameter.
+                        ayanamsa: '1', 
+                        chart_type: 'rasi',
                         chart_style: 'south-indian'
                     })
                 });
