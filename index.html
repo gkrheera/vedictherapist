@@ -3,84 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MVP Starter App</title>
+    <title>JyotishTherapist - MVP</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .auth-container button, .auth-container input {
-            transition: all 0.2s ease-in-out;
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #0d1117;
         }
-        .auth-container button:hover {
+        .auth-container button:hover, .form-container button:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .form-input {
+            background-color: #1c2128;
+            border-color: #30363d;
+            color: #c9d1d9;
+        }
+        .form-input::placeholder {
+            color: #484f58;
+        }
+        .form-input:focus {
+            background-color: #1c2128;
+            border-color: #58a6ff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
         }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="text-gray-300">
 
     <div class="min-h-screen flex flex-col items-center justify-center p-4">
-        <div class="w-full max-w-md mx-auto bg-white rounded-xl shadow-md p-8">
-            
-            <!-- App Title -->
+        
+        <!-- Logged In View: JyotishTherapist Form -->
+        <div id="logged-in-view" class="hidden w-full max-w-2xl mx-auto">
             <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-900">My Awesome MVP</h1>
-                <p class="text-gray-500 mt-2">Welcome! Please sign in to continue.</p>
+                <h1 class="text-5xl font-bold text-white" style="font-family: 'Garamond', serif;">JyotishTherapist</h1>
+                <p class="text-gray-400 mt-2">Vedic Astrology Chart & AI-Powered Insights</p>
             </div>
 
-            <!-- Authentication Section -->
-            <div id="auth-section" class="space-y-6 auth-container">
-                <!-- Logged Out State -->
-                <div id="logged-out-view">
-                    <div class="space-y-4">
-                        <div>
-                            <label for="email-input" class="text-sm font-medium text-gray-700">Email</label>
-                            <input id="email-input" type="email" placeholder="you@example.com" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        </div>
-                         <div>
-                            <label for="password-input" class="text-sm font-medium text-gray-700">Password</label>
-                            <input id="password-input" type="password" placeholder="••••••••" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        </div>
-                        <div class="flex items-center justify-between space-x-4">
-                            <button id="signin-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                Sign In
-                            </button>
-                             <button id="signup-btn" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                Sign Up
-                            </button>
-                        </div>
+            <form id="chart-form" class="bg-[#161b22] rounded-xl shadow-md p-8 border border-gray-700">
+                <h2 class="text-xl font-semibold text-white mb-6">Enter Birth Details</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="name" class="text-sm font-medium text-gray-400">Name</label>
+                        <input type="text" id="name" name="name" placeholder="Radha" class="mt-1 block w-full px-3 py-2 rounded-md shadow-sm sm:text-sm form-input">
                     </div>
-                     <div id="auth-message" class="mt-4 text-center text-sm text-gray-600"></div>
+                    <div>
+                        <label for="datetime" class="text-sm font-medium text-gray-400">Date & Time</label>
+                        <input type="datetime-local" id="datetime" name="datetime" class="mt-1 block w-full px-3 py-2 rounded-md shadow-sm sm:text-sm form-input">
+                    </div>
+                    <div>
+                        <label for="birth-place" class="text-sm font-medium text-gray-400">Birth Place</label>
+                        <input type="text" id="birth-place" name="birth-place" placeholder="Vrindavan, India" class="prokerala-location-input mt-1 block w-full px-3 py-2 rounded-md shadow-sm sm:text-sm form-input">
+                    </div>
+                    <div>
+                        <label for="timezone-offset" class="text-sm font-medium text-gray-400">Timezone Offset</label>
+                        <input type="text" id="timezone-offset" name="timezone-offset" placeholder="+05:30" readonly class="mt-1 block w-full px-3 py-2 rounded-md shadow-sm sm:text-sm form-input bg-gray-700/50 cursor-not-allowed">
+                    </div>
                 </div>
-
-                <!-- Logged In State -->
-                <div id="logged-in-view" class="hidden text-center">
-                    <p class="mb-4">Welcome back! You are logged in as:</p>
-                    <p id="user-email" class="font-medium text-indigo-600 bg-indigo-50 p-3 rounded-md"></p>
-                    <button id="logout-btn" class="mt-6 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                        Logout
+                <div class="mt-4">
+                    <p id="coordinates-display" class="text-xs text-gray-500 h-4"></p>
+                </div>
+                <div class="mt-6">
+                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-gray-900 bg-yellow-400 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 focus:ring-offset-gray-900 transition-all duration-200">
+                        Generate Chart
                     </button>
                 </div>
-            </div>
-
-            <!-- Spacer -->
-            <hr class="my-8 border-gray-200">
-            
-            <!-- Location Search Section -->
-            <div id="location-section" class="hidden">
-                 <h2 class="text-xl font-semibold text-center mb-4 text-gray-800">Location Search</h2>
-                 <p class="text-center text-sm text-gray-500 mb-4">This feature is available after you log in.</p>
-                <div class="relative">
-                    <input type="text"
-                           class="prokerala-location-input w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                           placeholder="Enter your location...">
-                </div>
-            </div>
-
+            </form>
+             <button id="logout-btn" class="mt-6 text-sm text-gray-500 hover:text-gray-300">Logout</button>
         </div>
+
+        <!-- Logged Out View: Authentication -->
+        <div id="logged-out-view" class="w-full max-w-md mx-auto">
+            <div class="bg-[#161b22] rounded-xl shadow-md p-8 border border-gray-700">
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-white">JyotishTherapist</h1>
+                    <p class="text-gray-400 mt-2">Welcome! Please sign in to continue.</p>
+                </div>
+                <div class="space-y-4 auth-container">
+                    <div>
+                        <label for="email-input" class="text-sm font-medium text-gray-400">Email</label>
+                        <input id="email-input" type="email" placeholder="you@example.com" class="mt-1 block w-full px-3 py-2 rounded-md shadow-sm placeholder-gray-500 sm:text-sm form-input">
+                    </div>
+                    <div>
+                        <label for="password-input" class="text-sm font-medium text-gray-400">Password</label>
+                        <input id="password-input" type="password" placeholder="••••••••" class="mt-1 block w-full px-3 py-2 rounded-md shadow-sm placeholder-gray-500 sm:text-sm form-input">
+                    </div>
+                    <div class="flex items-center justify-between space-x-4 pt-2">
+                        <button id="signin-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 transition-all duration-200">
+                            Sign In
+                        </button>
+                        <button id="signup-btn" class="w-full flex justify-center py-2 px-4 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-transparent hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 transition-all duration-200">
+                            Sign Up
+                        </button>
+                    </div>
+                </div>
+                <div id="auth-message" class="mt-4 text-center text-sm text-gray-400 h-5"></div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -96,14 +121,16 @@
         // --- UI ELEMENT REFERENCES ---
         const loggedInView = document.getElementById('logged-in-view');
         const loggedOutView = document.getElementById('logged-out-view');
-        const userEmailElement = document.getElementById('user-email');
         const logoutBtn = document.getElementById('logout-btn');
-        const locationSection = document.getElementById('location-section');
         const signInBtn = document.getElementById('signin-btn');
         const signUpBtn = document.getElementById('signup-btn');
         const emailInput = document.getElementById('email-input');
         const passwordInput = document.getElementById('password-input');
         const authMessage = document.getElementById('auth-message');
+        const chartForm = document.getElementById('chart-form');
+        const coordinatesDisplay = document.getElementById('coordinates-display');
+        const timezoneOffsetInput = document.getElementById('timezone-offset');
+
 
         // --- AUTHENTICATION FUNCTIONS ---
 
@@ -114,30 +141,28 @@
 
             if (!email || !password) {
                 authMessage.textContent = 'Please enter both email and password.';
-                authMessage.className = 'mt-4 text-center text-sm text-red-600';
+                authMessage.className = 'mt-4 text-center text-sm text-red-400';
                 return;
             }
 
             console.log(`Attempting to sign up with email: ${email}`);
             authMessage.textContent = 'Signing up...';
-            authMessage.className = 'mt-4 text-center text-sm text-gray-600';
+            authMessage.className = 'mt-4 text-center text-sm text-gray-400';
 
             const { data, error } = await supabaseClient.auth.signUp({ email, password });
 
             if (error) {
                 console.error('Sign up error:', error.message);
                 authMessage.textContent = `Error: ${error.message}`;
-                authMessage.className = 'mt-4 text-center text-sm text-red-600';
+                authMessage.className = 'mt-4 text-center text-sm text-red-400';
             } else {
                 console.log('Sign up successful:', data);
-                 // If the user object is not null but the session is, it means confirmation is required
                 if (data.user && !data.session) {
                     authMessage.textContent = 'Sign up successful! Please check your email for a confirmation link.';
-                    authMessage.className = 'mt-4 text-center text-sm text-green-600';
+                    authMessage.className = 'mt-4 text-center text-sm text-green-400';
                 } else {
-                    // This case might happen if email confirmation is disabled
                      authMessage.textContent = 'Sign up successful! You are now logged in.';
-                     authMessage.className = 'mt-4 text-center text-sm text-green-600';
+                     authMessage.className = 'mt-4 text-center text-sm text-green-400';
                 }
             }
         }
@@ -149,22 +174,21 @@
 
              if (!email || !password) {
                 authMessage.textContent = 'Please enter both email and password.';
-                authMessage.className = 'mt-4 text-center text-sm text-red-600';
+                authMessage.className = 'mt-4 text-center text-sm text-red-400';
                 return;
             }
 
             console.log(`Attempting to sign in with email: ${email}`);
-            authMessage.textContent = ''; // Clear previous messages
+            authMessage.textContent = '';
 
             const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
             if (error) {
                 console.error('Sign in error:', error.message);
                 authMessage.textContent = `Error: ${error.message}`;
-                authMessage.className = 'mt-4 text-center text-sm text-red-600';
+                authMessage.className = 'mt-4 text-center text-sm text-red-400';
             } else {
                 console.log('Sign in successful. Session:', data.session);
-                // The onAuthStateChange handler will update the UI
             }
         }
         
@@ -176,24 +200,19 @@
                 console.error('Error signing out:', error.message);
             } else {
                 console.log('Sign out successful.');
-                // The onAuthStateChange handler will update the UI
             }
         }
 
         // --- UI UPDATE FUNCTION ---
         function updateUserUI(session) {
             if (session) {
-                console.log('User is logged in. Updating UI.', session);
+                console.log('User is logged in. Showing JyotishTherapist form.');
                 loggedInView.classList.remove('hidden');
                 loggedOutView.classList.add('hidden');
-                locationSection.classList.remove('hidden');
-                userEmailElement.textContent = session.user.email;
             } else {
-                console.log('User is logged out. Updating UI.');
+                console.log('User is logged out. Showing auth form.');
                 loggedInView.classList.add('hidden');
                 loggedOutView.classList.remove('hidden');
-                locationSection.classList.add('hidden');
-                userEmailElement.textContent = '';
                 authMessage.textContent = '';
             }
         }
@@ -203,22 +222,28 @@
         signInBtn.addEventListener('click', signInWithEmail);
         logoutBtn.addEventListener('click', signOut);
 
+        chartForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(chartForm);
+            const data = Object.fromEntries(formData.entries());
+            console.log('Chart form submitted:', data);
+            // Here you would call the astrology API with the collected data
+            alert('Chart generation logic would run here. Check the console for form data.');
+        });
+
         // --- AUTH STATE CHANGE LISTENER ---
-        // This is the core of the authentication logic. It listens for changes
-        // (login, logout) and updates the UI accordingly.
         supabaseClient.auth.onAuthStateChange((event, session) => {
             console.log(`Auth event: ${event}`, session);
             updateUserUI(session);
         });
 
-        // Initial check for a session when the page loads
+        // Initial check for a session
         async function checkInitialSession() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             console.log('Initial session check:', session);
             updateUserUI(session);
         }
 
-        // Run the initial check when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', () => {
              checkInitialSession();
         });
@@ -228,7 +253,6 @@
     <!-- CODE FOR PROKERALA LOCATION SEARCH STARTS -->
     <script>
       (function () {
-          // IMPORTANT: You must get a Client ID from prokerala.com/astrology/api/
           const CLIENT_ID = 'edba7407-3766-4bc1-a618-8ff8eacb034c'; 
 
           function loadScript(cb) {
@@ -239,40 +263,45 @@
               document.head.appendChild(script);
           }
 
-          function createInput(name, value) {
-              const input = document.createElement('input');
-              input.name = name;
-              input.type = 'hidden';
+          function createInput(name) {
+              let input = document.querySelector(`input[name="${name}"]`);
+              if (!input) {
+                input = document.createElement('input');
+                input.name = name;
+                input.type = 'hidden';
+                chartForm.appendChild(input);
+              }
               return input;
           }
 
           function initWidget(input) {
-              const form = input.form;
-              // This is a check to ensure we don't run this on a non-form element, though in this simple app it's not strictly necessary.
-              if (!form) { 
-                  console.warn('Location input is not inside a form element.');
-                  return;
-              }
-              const inputPrefix = input.dataset.location_input_prefix ? input.dataset.location_input_prefix : '';
-              const coordinates = createInput(inputPrefix + 'coordinates');
-              const timezone = createInput(inputPrefix + 'timezone');
-              form.appendChild(coordinates);
-              form.appendChild(timezone);
+              if (!chartForm) return;
+
+              const coordinates = createInput('coordinates');
+              const timezone = createInput('timezone');
 
               new LocationSearch(input, function (data) {
-                  coordinates.value = `${data.latitude},${data.longitude}`;
+                  const lat = data.latitude.toFixed(4);
+                  const lon = data.longitude.toFixed(4);
+                  coordinates.value = `${lat},${lon}`;
                   timezone.value = data.timezone;
+                  
+                  // Update visible fields
+                  coordinatesDisplay.textContent = `Found: ${lat}, ${lon}`;
+                  timezoneOffsetInput.value = data.timezone;
+
                   console.log('Location selected:', {
                       name: input.value,
                       coordinates: coordinates.value,
                       timezone: timezone.value
                   });
                   input.setCustomValidity('');
-              }, {clientId: CLIENT_ID, persistKey: `${inputPrefix}loc`});
+              }, {clientId: CLIENT_ID, persistKey: `jyotish-loc`});
 
               input.addEventListener('change', function (e) {
-                  // This provides a simple form validation message if the user types but doesn't select a valid location.
                   input.setCustomValidity('Please select a location from the suggestions list');
+                  coordinatesDisplay.textContent = '';
+                  timezoneOffsetInput.value = '';
               });
           }
 
