@@ -1,4 +1,4 @@
-<!-- Version: 1.5 -->
+<!-- Version: 1.6 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -210,8 +210,7 @@
             const datetimeValue = document.getElementById('datetime').value;
             const timezone = document.querySelector('input[name="timezone"]').value;
             
-            // **FIX**: Add more robust validation to check the timezone format.
-            // A valid timezone offset from the widget will be a string like "+05:30".
+            // **FIX**: More robust validation to check the timezone format.
             const isValidTimezone = typeof timezone === 'string' && (timezone.startsWith('+') || timezone.startsWith('-'));
 
             if (!coordinates || !datetimeValue || !isValidTimezone) {
@@ -222,7 +221,6 @@
             }
 
             // The API requires the timezone offset to be part of the datetime string.
-            // Example: 2004-02-12T15:19:21+05:30
             const apiDatetime = `${datetimeValue}:00${timezone}`;
             
             const FUNCTION_ENDPOINT = '/.netlify/functions/generate-chart';
