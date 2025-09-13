@@ -1,4 +1,4 @@
-<!-- Version: 1.2 -->
+<!-- Version: 1.3 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -78,8 +78,8 @@
                         <input type="text" id="birth-place" name="birth-place" placeholder="Vrindavan, India" class="prokerala-location-input mt-1 block w-full px-3 py-2 rounded-md shadow-sm sm:text-sm form-input">
                     </div>
                     <div>
-                        <label for="timezone-offset" class="text-sm font-medium text-gray-400">Timezone Offset</label>
-                        <input type="text" id="timezone-offset" name="timezone-offset" placeholder="+05:30" readonly class="mt-1 block w-full px-3 py-2 rounded-md shadow-sm sm:text-sm form-input bg-gray-700/50 cursor-not-allowed">
+                        <label for="timezone-offset" class="text-sm font-medium text-gray-400">Timezone</label>
+                        <input type="text" id="timezone-offset" name="timezone-offset" placeholder="Asia/Kolkata" readonly class="mt-1 block w-full px-3 py-2 rounded-md shadow-sm sm:text-sm form-input bg-gray-700/50 cursor-not-allowed">
                     </div>
                 </div>
                 <div class="mt-4">
@@ -211,18 +211,23 @@
             const datetimeValue = formData.get('datetime');
             const timezone = formData.get('timezone');
             
-            if (!coordinates || !datetimeValue) {
+            // **FIX**: Add validation to ensure all required fields are present.
+            if (!coordinates || !datetimeValue || !timezone) {
                 chartError.textContent = 'Please select a valid date, time, and location.';
                 chartLoader.classList.add('hidden');
+                console.error('Validation failed: Missing coordinates, datetime, or timezone.');
                 return;
             }
 
+            // The API requires the timezone offset to be part of the datetime string.
+            // Example: 2004-02-12T15:19:21+05:30
             const apiDatetime = `${datetimeValue}:00${timezone}`;
+            
             // Use the path to our serverless function
             const FUNCTION_ENDPOINT = '/.netlify/functions/generate-chart';
 
             try {
-                console.log('Calling serverless function...');
+                console.log('Calling serverless function with datetime:', apiDatetime);
                 const response = await fetch(FUNCTION_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -238,7 +243,8 @@
 
                 if (!response.ok) {
                     console.error('API Error Response:', data);
-                    throw new Error(data.errors ? data.errors[0].detail : 'Failed to generate chart.');
+                    // Use the error message from the serverless function's response
+                    throw new Error(data.error || 'Failed to generate chart.');
                 }
 
                 console.log('API Success Response:', data);
@@ -322,22 +328,22 @@
               if (!chartForm) return;
 
               const coordinates = createInput('coordinates');
-              const timezone = createInput('timezone');
+              const timezone = createInput('timezone'); // This is the timezone *offset*, e.g., +05:30
 
               new LocationSearch(input, function (data) {
                   const lat = parseFloat(data.latitude).toFixed(4);
                   const lon = parseFloat(data.longitude).toFixed(4);
                   
                   coordinates.value = `${lat},${lon}`;
-                  timezone.value = data.timezone_offset;
+                  timezone.value = data.timezone_offset; // Set the hidden input for the offset
                   
                   coordinatesDisplay.textContent = `Found: ${lat}, ${lon}`;
-                  timezoneOffsetInput.value = data.timezone;
+                  timezoneOffsetInput.value = data.timezone; // This is the display value, e.g., "Asia/Kolkata"
 
                   console.log('Location selected:', {
                       name: input.value,
                       coordinates: coordinates.value,
-                      timezone: timezone.value
+                      timezone_offset: timezone.value
                   });
                   input.setCustomValidity('');
               }, {clientId: PROKERALA_CLIENT_ID, persistKey: `jyotish-loc`});
@@ -346,6 +352,9 @@
                   input.setCustomValidity('Please select a location from the suggestions list');
                   coordinatesDisplay.textContent = '';
                   timezoneOffsetInput.value = '';
+                  // Also clear the hidden values
+                  coordinates.value = '';
+                  timezone.value = '';
               });
           }
 
