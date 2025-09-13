@@ -3,198 +3,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Supabase MVP</title>
-    <!-- Tailwind CSS for styling -->
+    <title>MVP Starter App</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Supabase JS Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
-        /* Simple spinner for loading states */
-        body {
-            font-family: 'Inter', sans-serif;
+        body { font-family: 'Inter', sans-serif; }
+        .auth-container button, .auth-container input {
+            transition: all 0.2s ease-in-out;
         }
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 2s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .auth-container button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
     </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen">
+<body class="bg-gray-50 text-gray-800">
 
-    <div class="w-full max-w-md mx-auto bg-white rounded-xl shadow-md p-8">
-        <div id="loading-spinner" class="loader mx-auto my-8 hidden"></div>
-
-        <div id="app-content">
-            <!-- Header -->
+    <div class="min-h-screen flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-md mx-auto bg-white rounded-xl shadow-md p-8">
+            
+            <!-- App Title -->
             <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-900">Welcome to the MVP</h1>
-                <p class="text-gray-500 mt-2">Powered by Supabase & Netlify</p>
+                <h1 class="text-3xl font-bold text-gray-900">My Awesome MVP</h1>
+                <p class="text-gray-500 mt-2">Welcome! Please sign in to continue.</p>
             </div>
 
-            <!-- Auth Section: Shown when user is NOT logged in -->
-            <div id="auth-view" class="space-y-4">
-                <p class="text-center text-gray-600">Please sign in to continue.</p>
-                <button id="login-button" class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 ease-in-out flex items-center justify-center shadow-sm">
-                    <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#fff"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/><path d="M1 1h22v22H1z" fill="none"/></svg>
-                    <span>Sign In with Google</span>
-                </button>
-            </div>
-
-            <!-- Logged In Section: Shown when user IS logged in -->
-            <div id="user-view" class="hidden text-center space-y-4">
-                <div class="text-center">
-                    <p class="text-gray-600">You are logged in as:</p>
-                    <p id="user-email" class="font-semibold text-lg bg-gray-100 p-3 rounded-lg"></p>
-                </div>
-                
-                <!-- Location Search Section -->
-                <div id="location-search-section" class="pt-4 border-t">
-                     <form id="location-form">
-                        <label for="location-input" class="block text-left font-medium text-gray-700 mb-1">Search for a location:</label>
-                        <input type="text" id="location-input" name="location" class="prokerala-location-input block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="E.g., London, UK" required>
-                    </form>
-                    <div id="location-result" class="mt-4 text-left text-sm p-3 bg-gray-50 rounded-lg hidden">
-                        <p class="font-semibold">Selected Location Data:</p>
-                        <span id="coordinates-display"></span><br>
-                        <span id="timezone-display"></span>
+            <!-- Authentication Section -->
+            <div id="auth-section" class="space-y-6 auth-container">
+                <!-- Logged Out State -->
+                <div id="logged-out-view">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="email-input" class="text-sm font-medium text-gray-700">Email</label>
+                            <input id="email-input" type="email" placeholder="you@example.com" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                         <div>
+                            <label for="password-input" class="text-sm font-medium text-gray-700">Password</label>
+                            <input id="password-input" type="password" placeholder="••••••••" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div class="flex items-center justify-between space-x-4">
+                            <button id="signin-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Sign In
+                            </button>
+                             <button id="signup-btn" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Sign Up
+                            </button>
+                        </div>
                     </div>
+                     <div id="auth-message" class="mt-4 text-center text-sm text-gray-600"></div>
                 </div>
 
-                <button id="logout-button" class="w-full bg-red-500 text-white font-semibold py-3 px-4 rounded-lg hover:bg-red-600 transition duration-300 ease-in-out shadow-sm">
-                    Sign Out
-                </button>
+                <!-- Logged In State -->
+                <div id="logged-in-view" class="hidden text-center">
+                    <p class="mb-4">Welcome back! You are logged in as:</p>
+                    <p id="user-email" class="font-medium text-indigo-600 bg-indigo-50 p-3 rounded-md"></p>
+                    <button id="logout-btn" class="mt-6 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        Logout
+                    </button>
+                </div>
             </div>
 
-            <!-- Debugging/Log Area -->
-            <div id="log-message" class="mt-8 p-3 bg-gray-100 text-gray-600 text-sm rounded-lg h-24 overflow-y-auto">
-                <p class="font-semibold mb-2">Log Messages:</p>
-                <div id="log-content">Awaiting authentication status...</div>
+            <!-- Spacer -->
+            <hr class="my-8 border-gray-200">
+            
+            <!-- Location Search Section -->
+            <div id="location-section" class="hidden">
+                 <h2 class="text-xl font-semibold text-center mb-4 text-gray-800">Location Search</h2>
+                 <p class="text-center text-sm text-gray-500 mb-4">This feature is available after you log in.</p>
+                <div class="relative">
+                    <input type="text"
+                           class="prokerala-location-input w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                           placeholder="Enter your location...">
+                </div>
             </div>
+
         </div>
     </div>
 
     <script>
         // --- CONFIGURATION ---
-        // IMPORTANT: Replace these with your actual Supabase project URL and Anon Key
         const SUPABASE_URL = 'https://wnmrbharvfaljfnjingq.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubXJiaGFydmZhbGpmbmppbmdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDMwNDYsImV4cCI6MjA3MzMxOTA0Nn0.AgjPumfwwb0sE9PsCbAz-EpySVTy8CIh1_xMFjD2nt4';
         
         // --- INITIALIZATION ---
         const { createClient } = supabase;
-        const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
         console.log('Supabase client initialized.');
 
-        // --- DOM ELEMENTS ---
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const appContent = document.getElementById('app-content');
-        const loginButton = document.getElementById('login-button');
-        const logoutButton = document.getElementById('logout-button');
-        const authView = document.getElementById('auth-view');
-        const userView = document.getElementById('user-view');
-        const userEmail = document.getElementById('user-email');
-        const logContent = document.getElementById('log-content');
-        const logMessage = document.getElementById('log-message');
-        const locationResult = document.getElementById('location-result');
-        const coordinatesDisplay = document.getElementById('coordinates-display');
-        const timezoneDisplay = document.getElementById('timezone-display');
+        // --- UI ELEMENT REFERENCES ---
+        const loggedInView = document.getElementById('logged-in-view');
+        const loggedOutView = document.getElementById('logged-out-view');
+        const userEmailElement = document.getElementById('user-email');
+        const logoutBtn = document.getElementById('logout-btn');
+        const locationSection = document.getElementById('location-section');
+        const signInBtn = document.getElementById('signin-btn');
+        const signUpBtn = document.getElementById('signup-btn');
+        const emailInput = document.getElementById('email-input');
+        const passwordInput = document.getElementById('password-input');
+        const authMessage = document.getElementById('auth-message');
 
-        // --- HELPER FUNCTIONS ---
-        function writeToLog(message, isError = false) {
-            console.log(message);
-            const p = document.createElement('p');
-            p.textContent = `> ${message}`;
-            if (isError) {
-                p.style.color = 'red';
+        // --- AUTHENTICATION FUNCTIONS ---
+
+        // Sign up a new user
+        async function signUpWithEmail() {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!email || !password) {
+                authMessage.textContent = 'Please enter both email and password.';
+                authMessage.className = 'mt-4 text-center text-sm text-red-600';
+                return;
             }
-            logContent.appendChild(p);
-            logMessage.scrollTop = logMessage.scrollHeight; // Auto-scroll
-        }
 
-        function showLoading() {
-            loadingSpinner.classList.remove('hidden');
-            appContent.classList.add('hidden');
-        }
+            console.log(`Attempting to sign up with email: ${email}`);
+            authMessage.textContent = 'Signing up...';
+            authMessage.className = 'mt-4 text-center text-sm text-gray-600';
 
-        function hideLoading() {
-            loadingSpinner.classList.add('hidden');
-            appContent.classList.remove('hidden');
-        }
+            const { data, error } = await supabaseClient.auth.signUp({ email, password });
 
-        // --- AUTH FUNCTIONS ---
-        async function signInWithGoogle() {
-            writeToLog('Attempting to sign in with Google...');
-            try {
-                const { data, error } = await _supabase.auth.signInWithOAuth({
-                    provider: 'google',
-                });
-                if (error) throw error;
-                writeToLog('Redirecting to Google for authentication...');
-            } catch (error) {
-                writeToLog(`Error signing in: ${error.message}`, true);
+            if (error) {
+                console.error('Sign up error:', error.message);
+                authMessage.textContent = `Error: ${error.message}`;
+                authMessage.className = 'mt-4 text-center text-sm text-red-600';
+            } else {
+                console.log('Sign up successful:', data);
+                 // If the user object is not null but the session is, it means confirmation is required
+                if (data.user && !data.session) {
+                    authMessage.textContent = 'Sign up successful! Please check your email for a confirmation link.';
+                    authMessage.className = 'mt-4 text-center text-sm text-green-600';
+                } else {
+                    // This case might happen if email confirmation is disabled
+                     authMessage.textContent = 'Sign up successful! You are now logged in.';
+                     authMessage.className = 'mt-4 text-center text-sm text-green-600';
+                }
             }
         }
 
+        // Sign in an existing user
+        async function signInWithEmail() {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+             if (!email || !password) {
+                authMessage.textContent = 'Please enter both email and password.';
+                authMessage.className = 'mt-4 text-center text-sm text-red-600';
+                return;
+            }
+
+            console.log(`Attempting to sign in with email: ${email}`);
+            authMessage.textContent = ''; // Clear previous messages
+
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                console.error('Sign in error:', error.message);
+                authMessage.textContent = `Error: ${error.message}`;
+                authMessage.className = 'mt-4 text-center text-sm text-red-600';
+            } else {
+                console.log('Sign in successful. Session:', data.session);
+                // The onAuthStateChange handler will update the UI
+            }
+        }
+        
+        // Logout the current user
         async function signOut() {
-            writeToLog('Attempting to sign out...');
-            try {
-                const { error } = await _supabase.auth.signOut();
-                if (error) throw error;
-                writeToLog('User signed out successfully.');
-            } catch (error) {
-                writeToLog(`Error signing out: ${error.message}`, true);
+            console.log('Attempting to sign out.');
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) {
+                console.error('Error signing out:', error.message);
+            } else {
+                console.log('Sign out successful.');
+                // The onAuthStateChange handler will update the UI
             }
         }
 
         // --- UI UPDATE FUNCTION ---
-        function updateUserInterface(session) {
+        function updateUserUI(session) {
             if (session) {
-                // User is logged in
-                writeToLog(`User authenticated. Email: ${session.user.email}`);
-                userEmail.textContent = session.user.email;
-                authView.classList.add('hidden');
-                userView.classList.remove('hidden');
+                console.log('User is logged in. Updating UI.', session);
+                loggedInView.classList.remove('hidden');
+                loggedOutView.classList.add('hidden');
+                locationSection.classList.remove('hidden');
+                userEmailElement.textContent = session.user.email;
             } else {
-                // User is logged out
-                writeToLog('No active session. User is logged out.');
-                userEmail.textContent = '';
-                authView.classList.remove('hidden');
-                userView.classList.add('hidden');
+                console.log('User is logged out. Updating UI.');
+                loggedInView.classList.add('hidden');
+                loggedOutView.classList.remove('hidden');
+                locationSection.classList.add('hidden');
+                userEmailElement.textContent = '';
+                authMessage.textContent = '';
             }
-            hideLoading();
         }
 
         // --- EVENT LISTENERS ---
-        loginButton.addEventListener('click', signInWithGoogle);
-        logoutButton.addEventListener('click', signOut);
+        signUpBtn.addEventListener('click', signUpWithEmail);
+        signInBtn.addEventListener('click', signInWithEmail);
+        logoutBtn.addEventListener('click', signOut);
 
         // --- AUTH STATE CHANGE LISTENER ---
-        _supabase.auth.onAuthStateChange((event, session) => {
-            writeToLog(`Auth event: ${event}`);
-            console.log('Auth event:', event, 'Session:', session);
-            updateUserInterface(session);
+        // This is the core of the authentication logic. It listens for changes
+        // (login, logout) and updates the UI accordingly.
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            console.log(`Auth event: ${event}`, session);
+            updateUserUI(session);
         });
 
-        // --- INITIAL CHECK ---
+        // Initial check for a session when the page loads
         async function checkInitialSession() {
-            showLoading();
-            writeToLog('Checking initial user session...');
-            const { data: { session } } = await _supabase.auth.getSession();
-            updateUserInterface(session);
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            console.log('Initial session check:', session);
+            updateUserUI(session);
         }
 
-        // Run the initial check when the script loads.
-        checkInitialSession();
-        
+        // Run the initial check when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+             checkInitialSession();
+        });
+
     </script>
     
     <!-- CODE FOR PROKERALA LOCATION SEARCH STARTS -->
@@ -210,7 +238,7 @@
               script.async = 1;
               document.head.appendChild(script);
           }
-    
+
           function createInput(name, value) {
               const input = document.createElement('input');
               input.name = name;
@@ -220,45 +248,42 @@
 
           function initWidget(input) {
               const form = input.form;
+              // This is a check to ensure we don't run this on a non-form element, though in this simple app it's not strictly necessary.
+              if (!form) { 
+                  console.warn('Location input is not inside a form element.');
+                  return;
+              }
               const inputPrefix = input.dataset.location_input_prefix ? input.dataset.location_input_prefix : '';
-              const coordinates = createInput(inputPrefix +'coordinates');
-              const timezone = createInput(inputPrefix +'timezone');
+              const coordinates = createInput(inputPrefix + 'coordinates');
+              const timezone = createInput(inputPrefix + 'timezone');
               form.appendChild(coordinates);
               form.appendChild(timezone);
 
               new LocationSearch(input, function (data) {
                   coordinates.value = `${data.latitude},${data.longitude}`;
                   timezone.value = data.timezone;
+                  console.log('Location selected:', {
+                      name: input.value,
+                      coordinates: coordinates.value,
+                      timezone: timezone.value
+                  });
                   input.setCustomValidity('');
-
-                  // Display the results for the user
-                  coordinatesDisplay.textContent = `Coordinates: ${coordinates.value}`;
-                  timezoneDisplay.textContent = `Timezone: ${timezone.value}`;
-                  locationResult.classList.remove('hidden');
-                  writeToLog(`Location selected: ${input.value}`);
-
               }, {clientId: CLIENT_ID, persistKey: `${inputPrefix}loc`});
-    
+
               input.addEventListener('change', function (e) {
+                  // This provides a simple form validation message if the user types but doesn't select a valid location.
                   input.setCustomValidity('Please select a location from the suggestions list');
-                  locationResult.classList.add('hidden'); // Hide result if input is changed manually
               });
           }
 
           loadScript(function() {
-              if (CLIENT_ID === 'YOUR_PROKERALA_CLIENT_ID') {
-                  writeToLog('Prokerala Location Search is not configured. Please add your Client ID.', true);
-                  return;
-              }
+              console.log('Prokerala location script loaded.');
               let locationInputs = document.querySelectorAll('.prokerala-location-input');
               Array.from(locationInputs).map(initWidget);
-              writeToLog('Prokerala Location Search widget initialized.');
           });
       })();
     </script>
     <!-- CODE FOR LOCATION SEARCH ENDS -->
 </body>
 </html>
-
-
 
