@@ -1,8 +1,9 @@
-// Version: 1.3
+// Version: 1.4
 /*
  * This is our secure serverless function. It runs on Netlify's servers, not in the browser.
- * It receives the birth details from our web page, adds the secret API key,
- * and then safely calls the Prokerala API using the correct GET method.
+ * It now uses the correct OAuth 2.0 two-step flow:
+ * 1. Fetch a short-lived Bearer Token from the /token endpoint.
+ * 2. Use that Bearer Token to make the authenticated GET request for the chart.
  */
 exports.handler = async function(event) {
     if (event.httpMethod !== 'POST') {
@@ -10,38 +11,64 @@ exports.handler = async function(event) {
     }
 
     const { PROKERALA_CLIENT_ID, PROKERALA_CLIENT_SECRET } = process.env;
-    const authString = Buffer.from(`${PROKERALA_CLIENT_ID}:${PROKERALA_CLIENT_SECRET}`).toString('base64');
-    
-    // The base URL for the chart endpoint.
-    const API_ENDPOINT = 'https://api.prokerala.com/v2/astrology/chart';
 
     try {
-        const params = JSON.parse(event.body);
+        // --- Step 1: Fetch the Bearer Token ---
+        console.log('Fetching auth token from Prokerala...');
+        const tokenResponse = await fetch('https://api.prokerala.com/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                'grant_type': 'client_credentials',
+                'client_id': PROKERALA_CLIENT_ID,
+                'client_secret': PROKERALA_CLIENT_SECRET
+            })
+        });
 
-        // Convert the parameters into a URL query string for the GET request.
+        if (!tokenResponse.ok) {
+            const errorBody = await tokenResponse.text();
+            console.error('Failed to get auth token:', errorBody);
+            throw new Error('Could not authenticate with the API provider.');
+        }
+
+        const tokenData = await tokenResponse.json();
+        const accessToken = tokenData.access_token;
+        console.log('Successfully fetched auth token.');
+
+        // --- Step 2: Use the Bearer Token to get the chart ---
+        const params = JSON.parse(event.body);
+        const API_ENDPOINT = 'https://api.prokerala.com/v2/astrology/chart';
         const queryString = new URLSearchParams(params).toString();
         const fullUrl = `${API_ENDPOINT}?${queryString}`;
 
-        // Make the call to the Prokerala API using GET.
-        const response = await fetch(fullUrl, {
-            method: 'GET', // Corrected method
+        console.log(`Requesting chart from: ${fullUrl}`);
+        const chartResponse = await fetch(fullUrl, {
+            method: 'GET',
             headers: {
-                'Authorization': `Basic ${authString}`
-                // 'Content-Type' is not needed for GET requests with no body.
+                'Authorization': `Bearer ${accessToken}` // Using the correct Bearer token
             }
         });
 
-        const data = await response.json();
+        const data = await chartResponse.json();
+        
+        if (!chartResponse.ok) {
+             console.error('Prokerala API responded with an error:', data);
+             // Forward the specific error from Prokerala to the front-end
+             throw new Error(data.errors && data.errors[0] ? data.errors[0].detail : 'Failed to generate chart.');
+        }
 
         return {
-            statusCode: response.status,
+            statusCode: 200,
             body: JSON.stringify(data)
         };
+
     } catch (error) {
         console.error('Error in serverless function:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'An internal server error occurred.' })
+            body: JSON.stringify({ error: error.message })
         };
     }
 };
