@@ -29,6 +29,22 @@
             outline: none;
             box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
         }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #58a6ff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #chart-display-area svg {
+            background-color: white;
+            border-radius: 0.5rem;
+        }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -74,6 +90,16 @@
                     </button>
                 </div>
             </form>
+
+            <!-- Chart Display Area -->
+            <div id="chart-container" class="mt-8 w-full">
+                <div id="chart-loader" class="hidden flex justify-center items-center p-8">
+                    <div class="loader"></div>
+                </div>
+                <div id="chart-display-area" class="text-center"></div>
+                 <p id="chart-error" class="text-center text-red-400 mt-4"></p>
+            </div>
+
              <button id="logout-btn" class="mt-6 text-sm text-gray-500 hover:text-gray-300">Logout</button>
         </div>
 
@@ -112,6 +138,12 @@
         // --- CONFIGURATION ---
         const SUPABASE_URL = 'https://wnmrbharvfaljfnjingq.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubXJiaGFydmZhbGpmbmppbmdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDMwNDYsImV4cCI6MjA3MzMxOTA0Nn0.AgjPumfwwb0sE9PsCbAz-EpySVTy8CIh1_xMFjD2nt4';
+        const PROKERALA_CLIENT_ID = 'edba7407-3766-4bc1-a618-8ff8eacb034c';
+        // --- SECURITY WARNING ---
+        // The Client Secret should NOT be exposed in client-side code in a production application.
+        // This is included for MVP purposes only. For a real product, this API call should be
+        // made from a secure backend server or a serverless function (e.g., Netlify Functions).
+        const PROKERALA_CLIENT_SECRET = '199Py8mnBE3xjNmdBIWmenS84tsopL0JPnAFDpUt';
         
         // --- INITIALIZATION ---
         const { createClient } = supabase;
@@ -130,73 +162,109 @@
         const chartForm = document.getElementById('chart-form');
         const coordinatesDisplay = document.getElementById('coordinates-display');
         const timezoneOffsetInput = document.getElementById('timezone-offset');
-
+        const chartLoader = document.getElementById('chart-loader');
+        const chartDisplayArea = document.getElementById('chart-display-area');
+        const chartError = document.getElementById('chart-error');
 
         // --- AUTHENTICATION FUNCTIONS ---
+        // ... (sign up, sign in, sign out functions remain the same) ...
 
         async function signUpWithEmail() {
             const email = emailInput.value.trim();
             const password = passwordInput.value.trim();
-
-            if (!email || !password) {
-                authMessage.textContent = 'Please enter both email and password.';
-                authMessage.className = 'mt-4 text-center text-sm text-red-400';
-                return;
-            }
-
+            if (!email || !password) { authMessage.textContent = 'Please enter both email and password.'; authMessage.className = 'mt-4 text-center text-sm text-red-400'; return; }
             console.log(`Attempting to sign up with email: ${email}`);
             authMessage.textContent = 'Signing up...';
             authMessage.className = 'mt-4 text-center text-sm text-gray-400';
-
             const { data, error } = await supabaseClient.auth.signUp({ email, password });
-
-            if (error) {
-                console.error('Sign up error:', error.message);
-                authMessage.textContent = `Error: ${error.message}`;
-                authMessage.className = 'mt-4 text-center text-sm text-red-400';
-            } else {
-                console.log('Sign up successful:', data);
-                if (data.user && !data.session) {
-                    authMessage.textContent = 'Sign up successful! Please check your email for a confirmation link.';
-                    authMessage.className = 'mt-4 text-center text-sm text-green-400';
-                } else {
-                     authMessage.textContent = 'Sign up successful! You are now logged in.';
-                     authMessage.className = 'mt-4 text-center text-sm text-green-400';
-                }
+            if (error) { console.error('Sign up error:', error.message); authMessage.textContent = `Error: ${error.message}`; authMessage.className = 'mt-4 text-center text-sm text-red-400'; } 
+            else { console.log('Sign up successful:', data);
+                if (data.user && !data.session) { authMessage.textContent = 'Sign up successful! Please check your email for a confirmation link.'; authMessage.className = 'mt-4 text-center text-sm text-green-400'; } 
+                else { authMessage.textContent = 'Sign up successful! You are now logged in.'; authMessage.className = 'mt-4 text-center text-sm text-green-400'; }
             }
         }
 
         async function signInWithEmail() {
             const email = emailInput.value.trim();
             const password = passwordInput.value.trim();
-
-             if (!email || !password) {
-                authMessage.textContent = 'Please enter both email and password.';
-                authMessage.className = 'mt-4 text-center text-sm text-red-400';
-                return;
-            }
-
+            if (!email || !password) { authMessage.textContent = 'Please enter both email and password.'; authMessage.className = 'mt-4 text-center text-sm text-red-400'; return; }
             console.log(`Attempting to sign in with email: ${email}`);
             authMessage.textContent = '';
-
             const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-            if (error) {
-                console.error('Sign in error:', error.message);
-                authMessage.textContent = `Error: ${error.message}`;
-                authMessage.className = 'mt-4 text-center text-sm text-red-400';
-            } else {
-                console.log('Sign in successful. Session:', data.session);
-            }
+            if (error) { console.error('Sign in error:', error.message); authMessage.textContent = `Error: ${error.message}`; authMessage.className = 'mt-4 text-center text-sm text-red-400'; } 
+            else { console.log('Sign in successful. Session:', data.session); }
         }
         
         async function signOut() {
             console.log('Attempting to sign out.');
             const { error } = await supabaseClient.auth.signOut();
-            if (error) {
-                console.error('Error signing out:', error.message);
-            } else {
-                console.log('Sign out successful.');
+            if (error) { console.error('Error signing out:', error.message); } 
+            else { console.log('Sign out successful.'); }
+        }
+
+        // --- CHART GENERATION FUNCTION ---
+        async function generateChart(event) {
+            event.preventDefault();
+            console.log('Starting chart generation...');
+
+            // Clear previous results and show loader
+            chartDisplayArea.innerHTML = '';
+            chartError.textContent = '';
+            chartLoader.classList.remove('hidden');
+
+            const formData = new FormData(chartForm);
+            const coordinates = formData.get('coordinates');
+            const datetimeValue = formData.get('datetime');
+            const timezone = formData.get('timezone');
+            
+            if (!coordinates || !datetimeValue) {
+                chartError.textContent = 'Please select a valid date, time, and location.';
+                chartLoader.classList.add('hidden');
+                return;
+            }
+
+            // Format datetime for the API
+            const apiDatetime = `${datetimeValue}:00${timezone}`;
+
+            const API_ENDPOINT = 'https://api.prokerala.com/v2/astrology/chart';
+            const authString = btoa(`${PROKERALA_CLIENT_ID}:${PROKERALA_CLIENT_SECRET}`);
+
+            try {
+                console.log('Calling Prokerala API...');
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Basic ${authString}`
+                    },
+                    body: JSON.stringify({
+                        datetime: apiDatetime,
+                        coordinates: coordinates,
+                        ayanamsa: 'lahiri',
+                        chart_style: 'south-indian'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    console.error('API Error Response:', data);
+                    throw new Error(data.errors ? data.errors[0].detail : 'Failed to generate chart.');
+                }
+
+                console.log('API Success Response:', data);
+
+                if (data.data && data.data.svg) {
+                    chartDisplayArea.innerHTML = data.data.svg;
+                } else {
+                    throw new Error('SVG chart not found in API response.');
+                }
+
+            } catch (error) {
+                console.error('Chart generation failed:', error);
+                chartError.textContent = `Error: ${error.message}`;
+            } finally {
+                chartLoader.classList.add('hidden');
             }
         }
 
@@ -218,14 +286,7 @@
         signUpBtn.addEventListener('click', signUpWithEmail);
         signInBtn.addEventListener('click', signInWithEmail);
         logoutBtn.addEventListener('click', signOut);
-
-        chartForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const formData = new FormData(chartForm);
-            const data = Object.fromEntries(formData.entries());
-            console.log('Chart form submitted:', data);
-            alert('Chart generation logic would run here. Check the console for form data.');
-        });
+        chartForm.addEventListener('submit', generateChart);
 
         // --- AUTH STATE CHANGE LISTENER ---
         supabaseClient.auth.onAuthStateChange((event, session) => {
@@ -249,8 +310,6 @@
     <!-- CODE FOR PROKERALA LOCATION SEARCH STARTS -->
     <script>
       (function () {
-          const CLIENT_ID = 'edba7407-3766-4bc1-a618-8ff8eacb034c'; 
-
           function loadScript(cb) {
               var script = document.createElement('script');
               script.src = 'https://client-api.prokerala.com/static/js/location.min.js';
@@ -277,12 +336,11 @@
               const timezone = createInput('timezone');
 
               new LocationSearch(input, function (data) {
-                  // FIX: Convert string values to numbers before calling toFixed()
                   const lat = parseFloat(data.latitude).toFixed(4);
                   const lon = parseFloat(data.longitude).toFixed(4);
                   
                   coordinates.value = `${lat},${lon}`;
-                  timezone.value = data.timezone;
+                  timezone.value = data.timezone_offset;
                   
                   coordinatesDisplay.textContent = `Found: ${lat}, ${lon}`;
                   timezoneOffsetInput.value = data.timezone;
@@ -293,7 +351,7 @@
                       timezone: timezone.value
                   });
                   input.setCustomValidity('');
-              }, {clientId: CLIENT_ID, persistKey: `jyotish-loc`});
+              }, {clientId: PROKERALA_CLIENT_ID, persistKey: `jyotish-loc`});
 
               input.addEventListener('change', function (e) {
                   input.setCustomValidity('Please select a location from the suggestions list');
