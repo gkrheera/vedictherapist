@@ -1,4 +1,4 @@
-<!-- Version: 1.9 -->
+<!-- Version: 2.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -153,32 +153,22 @@
         const chartLoader = document.getElementById('chart-loader');
         const chartDisplayArea = document.getElementById('chart-display-area');
         const chartError = document.getElementById('chart-error');
-
-        // This hidden input will be our reliable source for coordinates
         let coordinatesInput; 
 
         async function generateChart(event) {
             event.preventDefault();
             chartError.textContent = '';
-
             const coordinates = coordinatesInput ? coordinatesInput.value : null;
-            const timezone = timezoneDisplayInput.value; // Read directly from the visible input
+            const timezone = timezoneDisplayInput.value;
             const datetimeValue = document.getElementById('datetime').value;
-
-            console.log('Attempting to generate chart with:', { datetimeValue, coordinates, timezone });
-
-
             if (!datetimeValue || !coordinates || !timezone) {
                 chartError.textContent = 'Please select a valid date, time, and birth place from the suggestions.';
                 return;
             }
-            
             chartLoader.classList.remove('hidden');
             chartDisplayArea.innerHTML = '';
-
             const apiDatetime = `${datetimeValue}:00${timezone}`;
             const FUNCTION_ENDPOINT = '/.netlify/functions/generate-chart';
-
             try {
                 const response = await fetch(FUNCTION_ENDPOINT, {
                     method: 'POST',
@@ -210,16 +200,13 @@
         signInBtn.addEventListener('click', signInWithEmail);
         logoutBtn.addEventListener('click', signOut);
         chartForm.addEventListener('submit', generateChart);
-
         supabaseClient.auth.onAuthStateChange((event, session) => {
             updateUserUI(session);
         });
-
         async function checkInitialSession() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             updateUserUI(session);
         }
-        
         document.addEventListener('DOMContentLoaded', checkInitialSession);
         
         async function signUpWithEmail(){const e=emailInput.value.trim(),t=passwordInput.value.trim();if(e&&t){console.log(`Attempting to sign up with email: ${e}`);authMessage.textContent="Signing up...";authMessage.className="mt-4 text-center text-sm text-gray-400";const{data:s,error:n}=await supabaseClient.auth.signUp({email:e,password:t});n?(console.error("Sign up error:",n.message),authMessage.textContent=`Error: ${n.message}`,authMessage.className="mt-4 text-center text-sm text-red-400"):(console.log("Sign up successful:",s),s.user&&!s.session?(authMessage.textContent="Sign up successful! Please check your email for a confirmation link.",authMessage.className="mt-4 text-center text-sm text-green-400"):(authMessage.textContent="Sign up successful! You are now logged in.",authMessage.className="mt-4 text-center text-sm text-green-400"))}else authMessage.textContent="Please enter both email and password.",authMessage.className="mt-4 text-center text-sm text-red-400"}async function signInWithEmail(){const e=emailInput.value.trim(),t=passwordInput.value.trim();if(e&&t){console.log(`Attempting to sign in with email: ${e}`);authMessage.textContent="";const{data:s,error:n}=await supabaseClient.auth.signInWithPassword({email:e,password:t});n?(console.error("Sign in error:",n.message),authMessage.textContent=`Error: ${n.message}`,authMessage.className="mt-4 text-center text-sm text-red-400"):console.log("Sign in successful. Session:",s.session)}else authMessage.textContent="Please enter both email and password.",authMessage.className="mt-4 text-center text-sm text-red-400"}async function signOut(){console.log("Attempting to sign out.");const{error:e}=await supabaseClient.auth.signOut();e?console.error("Error signing out:",e.message):console.log("Sign out successful.")}
@@ -247,30 +234,70 @@
               return input;
           }
 
+          /**
+           * NEW: Converts a timezone name (e.g., "Asia/Kolkata") to a UTC offset string (e.g., "+05:30")
+           * for a specific date, correctly handling daylight saving.
+           */
+          function getTimezoneOffsetString(date, timeZone) {
+            try {
+                const dateString = date.toISOString();
+                const utcDate = new Date(dateString.substring(0, dateString.lastIndexOf('.')));
+                
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone,
+                    timeZoneName: 'longOffset',
+                });
+                
+                const parts = formatter.formatToParts(utcDate);
+                const gmtPart = parts.find(part => part.type === 'timeZoneName');
+
+                if (gmtPart) {
+                    // Extracts "GMT+5:30" -> "+05:30"
+                    const offset = gmtPart.value.replace('GMT', '').replace(':', '');
+                    const sign = offset.substring(0, 1);
+                    const hours = offset.substring(1).padStart(4, '0').substring(0, 2);
+                    const minutes = offset.substring(1).padStart(4, '0').substring(2, 4);
+                    return `${sign}${hours}:${minutes}`;
+                }
+                return null;
+            } catch (e) {
+                console.error("Could not determine timezone offset:", e);
+                return null;
+            }
+          }
+
+
           function initWidget(input) {
               if (!chartForm) return;
               
-              coordinatesInput = createHiddenInput('coordinates'); // Assign to global let
+              coordinatesInput = createHiddenInput('coordinates');
 
               new LocationSearch(input, function (data) {
                   const lat = parseFloat(data.latitude).toFixed(4);
                   const lon = parseFloat(data.longitude).toFixed(4);
                   
-                  // Set values on the hidden input and visible displays
                   coordinatesInput.value = `${lat},${lon}`;
-                  timezoneDisplayInput.value = data.timezone_offset; // Set the visible input directly
-                  
                   coordinatesDisplay.textContent = `Found: ${lat}, ${lon}`;
 
+                  // Use the new function to get the correct offset
+                  const birthDate = new Date(document.getElementById('datetime').value || Date.now());
+                  const offsetString = getTimezoneOffsetString(birthDate, data.timezone);
+                  
+                  if (offsetString) {
+                      timezoneDisplayInput.value = offsetString;
+                  } else {
+                      timezoneDisplayInput.value = 'Error';
+                      chartError.textContent = `Could not determine timezone for ${data.timezone}.`;
+                  }
+                  
                   console.log('Location selected & data set:', {
                       coordinates: coordinatesInput.value,
                       timezone_offset: timezoneDisplayInput.value
                   });
                   input.setCustomValidity('');
-              }, {clientId: PROKERALA_CLIENT_ID, persistKey: `jyotish-loc-static-v2`});
+              }, {clientId: PROKERALA_CLIENT_ID, persistKey: `jyotish-loc-static-v3`});
 
               input.addEventListener('change', function (e) {
-                  // Clear all data if the user changes the text without selecting a suggestion
                   input.setCustomValidity('Please select a location from the suggestions list.');
                   coordinatesDisplay.textContent = '';
                   timezoneDisplayInput.value = '';
