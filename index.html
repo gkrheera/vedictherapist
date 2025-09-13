@@ -1,4 +1,4 @@
-<!-- Version: 1.6 -->
+<!-- Version: 1.8 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -40,7 +40,7 @@
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            100% { transform: rotate(300deg); }
         }
         #chart-display-area svg {
             background-color: white;
@@ -55,7 +55,6 @@
 
     <div class="min-h-screen flex flex-col items-center justify-center p-4">
         
-        <!-- Logged In View: JyotishTherapist Form -->
         <div id="logged-in-view" class="hidden w-full max-w-2xl mx-auto">
             <div class="text-center mb-8">
                 <h1 class="text-5xl font-bold text-white" style="font-family: 'Garamond', serif;">JyotishTherapist</h1>
@@ -75,11 +74,11 @@
                     </div>
                     <div>
                         <label for="birth-place" class="text-sm font-medium text-gray-400">Birth Place</label>
-                        <input type="text" id="birth-place" name="birth-place" placeholder="Vrindavan, India" class="prokerala-location-input mt-1 block w-full px-3 py-2 rounded-md shadow-sm sm:text-sm form-input">
+                        <input type="text" id="birth-place" name="birth-place" placeholder="Search for a city..." class="prokerala-location-input mt-1 block w-full px-3 py-2 rounded-md shadow-sm sm:text-sm form-input">
                     </div>
                     <div>
                         <label for="timezone-offset" class="text-sm font-medium text-gray-400">Timezone</label>
-                        <input type="text" id="timezone-offset" name="timezone-offset" placeholder="Asia/Kolkata" readonly class="mt-1 block w-full px-3 py-2 rounded-md shadow-sm sm:text-sm form-input bg-gray-700/50 cursor-not-allowed">
+                        <input type="text" id="timezone-offset-display" name="timezone-offset-display" placeholder="Auto-filled from location" readonly class="mt-1 block w-full px-3 py-2 rounded-md shadow-sm sm:text-sm form-input bg-gray-700/50 cursor-not-allowed">
                     </div>
                 </div>
                 <div class="mt-4">
@@ -92,7 +91,6 @@
                 </div>
             </form>
 
-            <!-- Chart Display Area -->
             <div id="chart-container" class="mt-8 w-full">
                 <div id="chart-loader" class="hidden flex justify-center items-center p-8">
                     <div class="loader"></div>
@@ -104,9 +102,9 @@
              <button id="logout-btn" class="mt-6 text-sm text-gray-500 hover:text-gray-300">Logout</button>
         </div>
 
-        <!-- Logged Out View: Authentication -->
         <div id="logged-out-view" class="w-full max-w-md mx-auto">
-            <div class="bg-[#161b22] rounded-xl shadow-md p-8 border border-gray-700">
+             <!-- Auth form remains the same -->
+             <div class="bg-[#161b22] rounded-xl shadow-md p-8 border border-gray-700">
                 <div class="text-center mb-8">
                     <h1 class="text-3xl font-bold text-white">JyotishTherapist</h1>
                     <p class="text-gray-400 mt-2">Welcome! Please sign in to continue.</p>
@@ -132,21 +130,16 @@
                 <div id="auth-message" class="mt-4 text-center text-sm text-gray-400 h-5"></div>
             </div>
         </div>
-
     </div>
 
     <script>
-        // --- CONFIGURATION ---
         const SUPABASE_URL = 'https://wnmrbharvfaljfnjingq.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubXJiaGFydmZhbGpmbmppbmdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDMwNDYsImV4cCI6MjA3MzMxOTA0Nn0.AgjPumfwwb0sE9PsCbAz-EpySVTy8CIh1_xMFjD2nt4';
         const PROKERALA_CLIENT_ID = 'edba7407-3766-4bc1-a618-8ff8eacb034c';
         
-        // --- INITIALIZATION ---
         const { createClient } = supabase;
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-        console.log('Supabase client initialized.');
 
-        // --- UI ELEMENT REFERENCES ---
         const loggedInView = document.getElementById('logged-in-view');
         const loggedOutView = document.getElementById('logged-out-view');
         const logoutBtn = document.getElementById('logout-btn');
@@ -157,103 +150,50 @@
         const authMessage = document.getElementById('auth-message');
         const chartForm = document.getElementById('chart-form');
         const coordinatesDisplay = document.getElementById('coordinates-display');
-        const timezoneOffsetInput = document.getElementById('timezone-offset');
+        const timezoneDisplayInput = document.getElementById('timezone-offset-display');
         const chartLoader = document.getElementById('chart-loader');
         const chartDisplayArea = document.getElementById('chart-display-area');
         const chartError = document.getElementById('chart-error');
 
-        // --- AUTHENTICATION FUNCTIONS ---
-
-        async function signUpWithEmail() {
-            const email = emailInput.value.trim();
-            const password = passwordInput.value.trim();
-            if (!email || !password) { authMessage.textContent = 'Please enter both email and password.'; authMessage.className = 'mt-4 text-center text-sm text-red-400'; return; }
-            console.log(`Attempting to sign up with email: ${email}`);
-            authMessage.textContent = 'Signing up...';
-            authMessage.className = 'mt-4 text-center text-sm text-gray-400';
-            const { data, error } = await supabaseClient.auth.signUp({ email, password });
-            if (error) { console.error('Sign up error:', error.message); authMessage.textContent = `Error: ${error.message}`; authMessage.className = 'mt-4 text-center text-sm text-red-400'; } 
-            else { console.log('Sign up successful:', data);
-                if (data.user && !data.session) { authMessage.textContent = 'Sign up successful! Please check your email for a confirmation link.'; authMessage.className = 'mt-4 text-center text-sm text-green-400'; } 
-                else { authMessage.textContent = 'Sign up successful! You are now logged in.'; authMessage.className = 'mt-4 text-center text-sm text-green-400'; }
-            }
-        }
-
-        async function signInWithEmail() {
-            const email = emailInput.value.trim();
-            const password = passwordInput.value.trim();
-            if (!email || !password) { authMessage.textContent = 'Please enter both email and password.'; authMessage.className = 'mt-4 text-center text-sm text-red-400'; return; }
-            console.log(`Attempting to sign in with email: ${email}`);
-            authMessage.textContent = '';
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            if (error) { console.error('Sign in error:', error.message); authMessage.textContent = `Error: ${error.message}`; authMessage.className = 'mt-4 text-center text-sm text-red-400'; } 
-            else { console.log('Sign in successful. Session:', data.session); }
-        }
-        
-        async function signOut() {
-            console.log('Attempting to sign out.');
-            const { error } = await supabaseClient.auth.signOut();
-            if (error) { console.error('Error signing out:', error.message); } 
-            else { console.log('Sign out successful.'); }
-        }
-
-        // --- CHART GENERATION FUNCTION ---
         async function generateChart(event) {
             event.preventDefault();
-            console.log('Starting chart generation...');
-
-            chartDisplayArea.innerHTML = '';
             chartError.textContent = '';
-            chartLoader.classList.remove('hidden');
 
-            const coordinates = document.querySelector('input[name="coordinates"]').value;
+            // The hidden inputs for coordinates and timezone are now the single source of truth
+            const coordinates = document.querySelector('input[name="coordinates"]')?.value;
+            const timezone = document.querySelector('input[name="timezone"]')?.value;
             const datetimeValue = document.getElementById('datetime').value;
-            const timezone = document.querySelector('input[name="timezone"]').value;
-            
-            // **FIX**: More robust validation to check the timezone format.
-            const isValidTimezone = typeof timezone === 'string' && (timezone.startsWith('+') || timezone.startsWith('-'));
 
-            if (!coordinates || !datetimeValue || !isValidTimezone) {
+            if (!datetimeValue || !coordinates || !timezone) {
                 chartError.textContent = 'Please select a valid date, time, and birth place from the suggestions.';
-                chartLoader.classList.add('hidden');
-                console.error(`Validation failed: Missing or invalid data. Coords: ${coordinates}, DateTime: ${datetimeValue}, Timezone: ${timezone}`);
                 return;
             }
-
-            // The API requires the timezone offset to be part of the datetime string.
-            const apiDatetime = `${datetimeValue}:00${timezone}`;
             
+            chartLoader.classList.remove('hidden');
+            chartDisplayArea.innerHTML = '';
+
+            const apiDatetime = `${datetimeValue}:00${timezone}`;
             const FUNCTION_ENDPOINT = '/.netlify/functions/generate-chart';
 
             try {
-                console.log('Calling serverless function with datetime:', apiDatetime);
                 const response = await fetch(FUNCTION_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         datetime: apiDatetime,
                         coordinates: coordinates,
-                        ayanamsa: '1', 
+                        ayanamsa: '1',
                         chart_type: 'rasi',
                         chart_style: 'south-indian'
                     })
                 });
-
                 const data = await response.json();
-
-                if (!response.ok) {
-                    console.error('API Error Response:', data);
-                    throw new Error(data.error || 'Failed to generate chart.');
-                }
-
-                console.log('API Success Response:', data);
-
+                if (!response.ok) throw new Error(data.error || 'Failed to generate chart.');
                 if (data.data && data.data.svg) {
                     chartDisplayArea.innerHTML = data.data.svg;
                 } else {
                     throw new Error('SVG chart not found in API response.');
                 }
-
             } catch (error) {
                 console.error('Chart generation failed:', error);
                 chartError.textContent = `Error: ${error.message}`;
@@ -261,47 +201,30 @@
                 chartLoader.classList.add('hidden');
             }
         }
-
-        // --- UI UPDATE FUNCTION ---
-        function updateUserUI(session) {
-            if (session) {
-                console.log('User is logged in. Showing JyotishTherapist form.');
-                loggedInView.classList.remove('hidden');
-                loggedOutView.classList.add('hidden');
-            } else {
-                console.log('User is logged out. Showing auth form.');
-                loggedInView.classList.add('hidden');
-                loggedOutView.classList.remove('hidden');
-                authMessage.textContent = '';
-            }
-        }
-
-        // --- EVENT LISTENERS ---
+        
+        // --- EVENT LISTENERS & AUTH LOGIC ---
         signUpBtn.addEventListener('click', signUpWithEmail);
         signInBtn.addEventListener('click', signInWithEmail);
         logoutBtn.addEventListener('click', signOut);
         chartForm.addEventListener('submit', generateChart);
 
-        // --- AUTH STATE CHANGE LISTENER ---
         supabaseClient.auth.onAuthStateChange((event, session) => {
-            console.log(`Auth event: ${event}`, session);
             updateUserUI(session);
         });
 
-        // Initial check for a session
         async function checkInitialSession() {
             const { data: { session } } = await supabaseClient.auth.getSession();
-            console.log('Initial session check:', session);
             updateUserUI(session);
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-             checkInitialSession();
-        });
-
+        
+        document.addEventListener('DOMContentLoaded', checkInitialSession);
+        
+        // Minor auth functions & UI update to keep the snippet complete
+        async function signUpWithEmail(){const e=emailInput.value.trim(),t=passwordInput.value.trim();if(e&&t){console.log(`Attempting to sign up with email: ${e}`);authMessage.textContent="Signing up...";authMessage.className="mt-4 text-center text-sm text-gray-400";const{data:s,error:n}=await supabaseClient.auth.signUp({email:e,password:t});n?(console.error("Sign up error:",n.message),authMessage.textContent=`Error: ${n.message}`,authMessage.className="mt-4 text-center text-sm text-red-400"):(console.log("Sign up successful:",s),s.user&&!s.session?(authMessage.textContent="Sign up successful! Please check your email for a confirmation link.",authMessage.className="mt-4 text-center text-sm text-green-400"):(authMessage.textContent="Sign up successful! You are now logged in.",authMessage.className="mt-4 text-center text-sm text-green-400"))}else authMessage.textContent="Please enter both email and password.",authMessage.className="mt-4 text-center text-sm text-red-400"}async function signInWithEmail(){const e=emailInput.value.trim(),t=passwordInput.value.trim();if(e&&t){console.log(`Attempting to sign in with email: ${e}`);authMessage.textContent="";const{data:s,error:n}=await supabaseClient.auth.signInWithPassword({email:e,password:t});n?(console.error("Sign in error:",n.message),authMessage.textContent=`Error: ${n.message}`,authMessage.className="mt-4 text-center text-sm text-red-400"):console.log("Sign in successful. Session:",s.session)}else authMessage.textContent="Please enter both email and password.",authMessage.className="mt-4 text-center text-sm text-red-400"}async function signOut(){console.log("Attempting to sign out.");const{error:e}=await supabaseClient.auth.signOut();e?console.error("Error signing out:",e.message):console.log("Sign out successful.")}
+        function updateUserUI(session){session?(loggedInView.classList.remove("hidden"),loggedOutView.classList.add("hidden")):(loggedInView.classList.add("hidden"),loggedOutView.classList.remove("hidden"),authMessage.textContent="")}
     </script>
     
-    <!-- CODE FOR PROKERALA LOCATION SEARCH STARTS -->
+    <!-- RE-INTEGRATED PROKERALA LOCATION SCRIPT WITH FIX -->
     <script>
       (function () {
           function loadScript(cb) {
@@ -312,7 +235,7 @@
               document.head.appendChild(script);
           }
 
-          function createInput(name) {
+          function createHiddenInput(name) {
               let input = document.querySelector(`input[name="${name}"]`);
               if (!input) {
                 input = document.createElement('input');
@@ -325,34 +248,36 @@
 
           function initWidget(input) {
               if (!chartForm) return;
-
-              const coordinates = createInput('coordinates');
-              const timezone = createInput('timezone'); 
+              
+              const coordinatesInput = createHiddenInput('coordinates');
+              const timezoneInput = createHiddenInput('timezone'); 
 
               new LocationSearch(input, function (data) {
                   const lat = parseFloat(data.latitude).toFixed(4);
                   const lon = parseFloat(data.longitude).toFixed(4);
                   
-                  coordinates.value = `${lat},${lon}`;
-                  timezone.value = data.timezone_offset; 
+                  // Set values on hidden inputs for submission
+                  coordinatesInput.value = `${lat},${lon}`;
+                  timezoneInput.value = data.timezone_offset; 
                   
+                  // Set values on visible, read-only inputs for user feedback
                   coordinatesDisplay.textContent = `Found: ${lat}, ${lon}`;
-                  timezoneOffsetInput.value = data.timezone; 
+                  timezoneDisplayInput.value = `${data.timezone} (${data.timezone_offset})`; 
 
-                  console.log('Location selected:', {
-                      name: input.value,
-                      coordinates: coordinates.value,
-                      timezone_offset: timezone.value
+                  console.log('Location selected & data set statically:', {
+                      coordinates: coordinatesInput.value,
+                      timezone_offset: timezoneInput.value
                   });
                   input.setCustomValidity('');
-              }, {clientId: PROKERALA_CLIENT_ID, persistKey: `jyotish-loc`});
+              }, {clientId: PROKERALA_CLIENT_ID, persistKey: `jyotish-loc-static`});
 
               input.addEventListener('change', function (e) {
-                  input.setCustomValidity('Please select a location from the suggestions list');
+                  // Clear all data if the user changes the text without selecting a suggestion
+                  input.setCustomValidity('Please select a location from the suggestions list.');
                   coordinatesDisplay.textContent = '';
-                  timezoneOffsetInput.value = '';
-                  coordinates.value = '';
-                  timezone.value = '';
+                  timezoneDisplayInput.value = '';
+                  coordinatesInput.value = '';
+                  timezoneInput.value = '';
               });
           }
 
@@ -363,7 +288,7 @@
           });
       })();
     </script>
-    <!-- CODE FOR LOCATION SEARCH ENDS -->
+
 </body>
 </html>
 
