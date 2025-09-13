@@ -1,4 +1,4 @@
-<!-- Version: 1.3 -->
+<!-- Version: 1.4 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -206,21 +206,20 @@
             chartError.textContent = '';
             chartLoader.classList.remove('hidden');
 
-            const formData = new FormData(chartForm);
-            const coordinates = formData.get('coordinates');
-            const datetimeValue = formData.get('datetime');
-            const timezone = formData.get('timezone');
+            // **FIX**: Get values directly from the input elements for reliability.
+            const coordinates = document.querySelector('input[name="coordinates"]').value;
+            const datetimeValue = document.getElementById('datetime').value;
+            const timezone = document.querySelector('input[name="timezone"]').value;
             
-            // **FIX**: Add validation to ensure all required fields are present.
+            // **FIX**: More robust validation to check for empty values.
             if (!coordinates || !datetimeValue || !timezone) {
-                chartError.textContent = 'Please select a valid date, time, and location.';
+                chartError.textContent = 'Please select a valid date, time, and birth place.';
                 chartLoader.classList.add('hidden');
-                console.error('Validation failed: Missing coordinates, datetime, or timezone.');
+                console.error('Validation failed: Missing coordinates, datetime, or timezone value.');
                 return;
             }
 
             // The API requires the timezone offset to be part of the datetime string.
-            // Example: 2004-02-12T15:19:21+05:30
             const apiDatetime = `${datetimeValue}:00${timezone}`;
             
             // Use the path to our serverless function
@@ -234,7 +233,8 @@
                     body: JSON.stringify({
                         datetime: apiDatetime,
                         coordinates: coordinates,
-                        ayanamsa: 'lahiri',
+                        ayanamsa: '1', // **FIX**: Use the correct numeric value for Lahiri.
+                        chart_type: 'rasi', // **FIX**: Add the mandatory chart_type parameter.
                         chart_style: 'south-indian'
                     })
                 });
@@ -243,7 +243,6 @@
 
                 if (!response.ok) {
                     console.error('API Error Response:', data);
-                    // Use the error message from the serverless function's response
                     throw new Error(data.error || 'Failed to generate chart.');
                 }
 
@@ -328,17 +327,17 @@
               if (!chartForm) return;
 
               const coordinates = createInput('coordinates');
-              const timezone = createInput('timezone'); // This is the timezone *offset*, e.g., +05:30
+              const timezone = createInput('timezone'); 
 
               new LocationSearch(input, function (data) {
                   const lat = parseFloat(data.latitude).toFixed(4);
                   const lon = parseFloat(data.longitude).toFixed(4);
                   
                   coordinates.value = `${lat},${lon}`;
-                  timezone.value = data.timezone_offset; // Set the hidden input for the offset
+                  timezone.value = data.timezone_offset; 
                   
                   coordinatesDisplay.textContent = `Found: ${lat}, ${lon}`;
-                  timezoneOffsetInput.value = data.timezone; // This is the display value, e.g., "Asia/Kolkata"
+                  timezoneOffsetInput.value = data.timezone; 
 
                   console.log('Location selected:', {
                       name: input.value,
@@ -352,7 +351,6 @@
                   input.setCustomValidity('Please select a location from the suggestions list');
                   coordinatesDisplay.textContent = '';
                   timezoneOffsetInput.value = '';
-                  // Also clear the hidden values
                   coordinates.value = '';
                   timezone.value = '';
               });
