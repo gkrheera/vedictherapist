@@ -1,4 +1,4 @@
-<!-- Version: 2.0 -->
+<!-- Version: 2.1 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,6 +46,18 @@
             background-color: white;
             border-radius: 0.5rem;
         }
+        .toggle-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .toggle-btn.active {
+            background-color: #58a6ff;
+            color: white;
+            font-weight: bold;
+        }
+         .toggle-btn.inactive {
+            background-color: #21262d;
+            color: #8b949e;
+         }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -90,6 +102,11 @@
                     </button>
                 </div>
             </form>
+            
+            <div id="chart-controls" class="hidden justify-center my-4">
+                <button id="south-indian-btn" class="toggle-btn active px-4 py-2 text-sm font-medium rounded-l-md">South Indian</button>
+                <button id="north-indian-btn" class="toggle-btn inactive px-4 py-2 text-sm font-medium rounded-r-md">North Indian</button>
+            </div>
 
             <div id="chart-container" class="mt-8 w-full">
                 <div id="chart-loader" class="hidden flex justify-center items-center p-8">
@@ -153,38 +170,45 @@
         const chartLoader = document.getElementById('chart-loader');
         const chartDisplayArea = document.getElementById('chart-display-area');
         const chartError = document.getElementById('chart-error');
+        const chartControls = document.getElementById('chart-controls');
+        const southIndianBtn = document.getElementById('south-indian-btn');
+        const northIndianBtn = document.getElementById('north-indian-btn');
+        
         let coordinatesInput; 
+        let currentBirthData = null;
+        let currentChartStyle = 'south-indian';
 
-        async function generateChart(event) {
-            event.preventDefault();
-            chartError.textContent = '';
-            const coordinates = coordinatesInput ? coordinatesInput.value : null;
-            const timezone = timezoneDisplayInput.value;
-            const datetimeValue = document.getElementById('datetime').value;
-            if (!datetimeValue || !coordinates || !timezone) {
-                chartError.textContent = 'Please select a valid date, time, and birth place from the suggestions.';
+        async function fetchAndRenderChart() {
+            if (!currentBirthData) {
+                chartError.textContent = 'Please fill out the form and generate a chart first.';
                 return;
             }
+
             chartLoader.classList.remove('hidden');
             chartDisplayArea.innerHTML = '';
-            const apiDatetime = `${datetimeValue}:00${timezone}`;
+            chartError.textContent = '';
+            
+            const apiDatetime = `${currentBirthData.datetimeValue}:00${currentBirthData.timezone}`;
             const FUNCTION_ENDPOINT = '/.netlify/functions/generate-chart';
+
             try {
                 const response = await fetch(FUNCTION_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         datetime: apiDatetime,
-                        coordinates: coordinates,
+                        coordinates: currentBirthData.coordinates,
                         ayanamsa: '1',
                         chart_type: 'rasi',
-                        chart_style: 'south-indian'
+                        chart_style: currentChartStyle
                     })
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Failed to generate chart.');
                 if (data.data && data.data.svg) {
                     chartDisplayArea.innerHTML = data.data.svg;
+                    chartControls.classList.remove('hidden'); 
+                    chartControls.classList.add('flex');
                 } else {
                     throw new Error('SVG chart not found in API response.');
                 }
@@ -195,11 +219,48 @@
                 chartLoader.classList.add('hidden');
             }
         }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            const coordinates = coordinatesInput ? coordinatesInput.value : null;
+            const timezone = timezoneDisplayInput.value;
+            const datetimeValue = document.getElementById('datetime').value;
+
+            if (!datetimeValue || !coordinates || !timezone) {
+                chartError.textContent = 'Please select a valid date, time, and birth place from the suggestions.';
+                return;
+            }
+            
+            // Store the validated data
+            currentBirthData = { coordinates, timezone, datetimeValue };
+
+            // Fetch the chart for the first time
+            fetchAndRenderChart();
+        }
+
+        function setChartStyle(style) {
+            if (style === currentChartStyle) return; // Do nothing if style is already active
+            
+            currentChartStyle = style;
+
+            if (style === 'south-indian') {
+                southIndianBtn.classList.replace('inactive', 'active');
+                northIndianBtn.classList.replace('active', 'inactive');
+            } else {
+                northIndianBtn.classList.replace('inactive', 'active');
+                southIndianBtn.classList.replace('active', 'inactive');
+            }
+            
+            fetchAndRenderChart(); // Re-fetch with new style
+        }
         
         signUpBtn.addEventListener('click', signUpWithEmail);
         signInBtn.addEventListener('click', signInWithEmail);
         logoutBtn.addEventListener('click', signOut);
-        chartForm.addEventListener('submit', generateChart);
+        chartForm.addEventListener('submit', handleFormSubmit);
+        southIndianBtn.addEventListener('click', () => setChartStyle('south-indian'));
+        northIndianBtn.addEventListener('click', () => setChartStyle('north-indian'));
+
         supabaseClient.auth.onAuthStateChange((event, session) => {
             updateUserUI(session);
         });
@@ -234,29 +295,20 @@
               return input;
           }
 
-          /**
-           * NEW: Converts a timezone name (e.g., "Asia/Kolkata") to a UTC offset string (e.g., "+05:30")
-           * for a specific date, correctly handling daylight saving.
-           */
           function getTimezoneOffsetString(date, timeZone) {
             try {
                 const dateString = date.toISOString();
                 const utcDate = new Date(dateString.substring(0, dateString.lastIndexOf('.')));
-                
-                const formatter = new Intl.DateTimeFormat('en-US', {
-                    timeZone,
-                    timeZoneName: 'longOffset',
-                });
-                
+                const formatter = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'longOffset' });
                 const parts = formatter.formatToParts(utcDate);
                 const gmtPart = parts.find(part => part.type === 'timeZoneName');
 
                 if (gmtPart) {
-                    // Extracts "GMT+5:30" -> "+05:30"
-                    const offset = gmtPart.value.replace('GMT', '').replace(':', '');
-                    const sign = offset.substring(0, 1);
-                    const hours = offset.substring(1).padStart(4, '0').substring(0, 2);
-                    const minutes = offset.substring(1).padStart(4, '0').substring(2, 4);
+                    const offset = gmtPart.value.replace('GMT', '');
+                    const [hoursStr, minutesStr] = offset.split(':');
+                    const sign = hoursStr.substring(0,1);
+                    const hours = hoursStr.substring(1).padStart(2, '0');
+                    const minutes = (minutesStr || "00").padStart(2, '0');
                     return `${sign}${hours}:${minutes}`;
                 }
                 return null;
@@ -266,21 +318,30 @@
             }
           }
 
-
           function initWidget(input) {
               if (!chartForm) return;
-              
               coordinatesInput = createHiddenInput('coordinates');
-
               new LocationSearch(input, function (data) {
                   const lat = parseFloat(data.latitude).toFixed(4);
                   const lon = parseFloat(data.longitude).toFixed(4);
-                  
                   coordinatesInput.value = `${lat},${lon}`;
                   coordinatesDisplay.textContent = `Found: ${lat}, ${lon}`;
-
-                  // Use the new function to get the correct offset
-                  const birthDate = new Date(document.getElementById('datetime').value || Date.now());
+                  const birthDateInput = document.getElementById('datetime');
+                  let birthDate = new Date(); // Default to now
+                  if (birthDateInput.value) {
+                      birthDate = new Date(birthDateInput.value);
+                  } else {
+                      // Set a default value if empty, so timezone conversion works
+                      const now = new Date();
+                      const year = now.getFullYear();
+                      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                      const day = now.getDate().toString().padStart(2, '0');
+                      const hours = now.getHours().toString().padStart(2, '0');
+                      const minutes = now.getMinutes().toString().padStart(2, '0');
+                      birthDateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                      birthDate = now;
+                  }
+                  
                   const offsetString = getTimezoneOffsetString(birthDate, data.timezone);
                   
                   if (offsetString) {
@@ -289,13 +350,8 @@
                       timezoneDisplayInput.value = 'Error';
                       chartError.textContent = `Could not determine timezone for ${data.timezone}.`;
                   }
-                  
-                  console.log('Location selected & data set:', {
-                      coordinates: coordinatesInput.value,
-                      timezone_offset: timezoneDisplayInput.value
-                  });
                   input.setCustomValidity('');
-              }, {clientId: PROKERALA_CLIENT_ID, persistKey: `jyotish-loc-static-v3`});
+              }, {clientId: PROKERALA_CLIENT_ID, persistKey: `jyotish-loc-static-v4`});
 
               input.addEventListener('change', function (e) {
                   input.setCustomValidity('Please select a location from the suggestions list.');
