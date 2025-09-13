@@ -1,3 +1,4 @@
+<!-- Version: 1.2 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -139,11 +140,6 @@
         const SUPABASE_URL = 'https://wnmrbharvfaljfnjingq.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubXJiaGFydmZhbGpmbmppbmdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDMwNDYsImV4cCI6MjA3MzMxOTA0Nn0.AgjPumfwwb0sE9PsCbAz-EpySVTy8CIh1_xMFjD2nt4';
         const PROKERALA_CLIENT_ID = 'edba7407-3766-4bc1-a618-8ff8eacb034c';
-        // --- SECURITY WARNING ---
-        // The Client Secret should NOT be exposed in client-side code in a production application.
-        // This is included for MVP purposes only. For a real product, this API call should be
-        // made from a secure backend server or a serverless function (e.g., Netlify Functions).
-        const PROKERALA_CLIENT_SECRET = '199Py8mnBE3xjNmdBIWmenS84tsopL0JPnAFDpUt';
         
         // --- INITIALIZATION ---
         const { createClient } = supabase;
@@ -167,7 +163,6 @@
         const chartError = document.getElementById('chart-error');
 
         // --- AUTHENTICATION FUNCTIONS ---
-        // ... (sign up, sign in, sign out functions remain the same) ...
 
         async function signUpWithEmail() {
             const email = emailInput.value.trim();
@@ -207,7 +202,6 @@
             event.preventDefault();
             console.log('Starting chart generation...');
 
-            // Clear previous results and show loader
             chartDisplayArea.innerHTML = '';
             chartError.textContent = '';
             chartLoader.classList.remove('hidden');
@@ -223,20 +217,15 @@
                 return;
             }
 
-            // Format datetime for the API
             const apiDatetime = `${datetimeValue}:00${timezone}`;
-
-            const API_ENDPOINT = 'https://api.prokerala.com/v2/astrology/chart';
-            const authString = btoa(`${PROKERALA_CLIENT_ID}:${PROKERALA_CLIENT_SECRET}`);
+            // Use the path to our serverless function
+            const FUNCTION_ENDPOINT = '/.netlify/functions/generate-chart';
 
             try {
-                console.log('Calling Prokerala API...');
-                const response = await fetch(API_ENDPOINT, {
+                console.log('Calling serverless function...');
+                const response = await fetch(FUNCTION_ENDPOINT, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Basic ${authString}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         datetime: apiDatetime,
                         coordinates: coordinates,
