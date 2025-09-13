@@ -1,9 +1,4 @@
-// Version: 1.4
-const fetch = require('node-fetch');
-
-exports.handler = async (event, context) => {
-    //
-// Version: 1.3
+// Version: 1.5
 const fetch = require('node-fetch');
 
 exports.handler = async (event, context) => {
@@ -59,14 +54,10 @@ exports.handler = async (event, context) => {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
         
-        // ** THE FIX IS HERE **
-        // Check the content type to handle SVG or JSON error responses
         const contentType = prokeralaResponse.headers.get("content-type");
 
         if (prokeralaResponse.ok && contentType && contentType.includes("image/svg+xml")) {
-             // If we get an SVG, read it as text
             const svgText = await prokeralaResponse.text();
-            // Wrap it in the JSON structure the frontend expects
             const responseBody = {
                 data: {
                     svg: svgText
@@ -78,7 +69,6 @@ exports.handler = async (event, context) => {
                 body: JSON.stringify(responseBody)
             };
         } else {
-            // If it's not an SVG or not a 200 OK response, it must be a JSON error
             const errorData = await prokeralaResponse.json();
             console.error('Prokerala API responded with an error:', JSON.stringify(errorData, null, 2));
             const errorMessage = errorData.errors?.[0]?.detail || 'An unknown API error occurred.';
