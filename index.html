@@ -134,7 +134,6 @@
 
         // --- AUTHENTICATION FUNCTIONS ---
 
-        // Sign up a new user
         async function signUpWithEmail() {
             const email = emailInput.value.trim();
             const password = passwordInput.value.trim();
@@ -167,7 +166,6 @@
             }
         }
 
-        // Sign in an existing user
         async function signInWithEmail() {
             const email = emailInput.value.trim();
             const password = passwordInput.value.trim();
@@ -192,7 +190,6 @@
             }
         }
         
-        // Logout the current user
         async function signOut() {
             console.log('Attempting to sign out.');
             const { error } = await supabaseClient.auth.signOut();
@@ -227,7 +224,6 @@
             const formData = new FormData(chartForm);
             const data = Object.fromEntries(formData.entries());
             console.log('Chart form submitted:', data);
-            // Here you would call the astrology API with the collected data
             alert('Chart generation logic would run here. Check the console for form data.');
         });
 
@@ -281,12 +277,13 @@
               const timezone = createInput('timezone');
 
               new LocationSearch(input, function (data) {
-                  const lat = data.latitude.toFixed(4);
-                  const lon = data.longitude.toFixed(4);
+                  // FIX: Convert string values to numbers before calling toFixed()
+                  const lat = parseFloat(data.latitude).toFixed(4);
+                  const lon = parseFloat(data.longitude).toFixed(4);
+                  
                   coordinates.value = `${lat},${lon}`;
                   timezone.value = data.timezone;
                   
-                  // Update visible fields
                   coordinatesDisplay.textContent = `Found: ${lat}, ${lon}`;
                   timezoneOffsetInput.value = data.timezone;
 
