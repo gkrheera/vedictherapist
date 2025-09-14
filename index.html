@@ -1,4 +1,4 @@
-<!-- Version: 3.3 (Auth Syntax & Readability Fix) -->
+<!-- Version: 3.4 (Multi-fix: Toggle, Dharma, and AI) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,6 +15,7 @@
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #58a6ff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #chart-display-area svg { background-color: white; border-radius: 0.5rem; }
+        .toggle-btn { transition: all 0.2s ease-in-out; }
         .toggle-btn.active { background-color: #58a6ff; color: white; font-weight: bold; }
         .toggle-btn.inactive { background-color: #21262d; color: #8b949e; }
         .insight-card { background-color: #161b22; border: 1px solid #30363d; }
@@ -118,7 +119,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- App State ---
             const appState = {
                 supabaseClient: supabase.createClient('https://wnmrbharvfaljfnjingq.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubXJiaGFydmZhbGpmbmppbmdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDMwNDYsImV4cCI6MjA3MzMxOTA0Nn0.AgjPumfwwb0sE9PsCbAz-EpySVTy8CIh1_xMFjD2nt4'),
                 PROKERALA_CLIENT_ID: 'edba7407-3766-4bc1-a618-8ff8eacb034c',
@@ -128,11 +128,9 @@
                 coordinatesInput: null
             };
 
-            // --- DOM Element References ---
             const el = (id) => document.getElementById(id);
             const loggedInView = el('logged-in-view'), loggedOutView = el('logged-out-view'), logoutBtn = el('logout-btn'), signInBtn = el('signin-btn'), signUpBtn = el('signup-btn'), emailInput = el('email-input'), passwordInput = el('password-input'), authMessage = el('auth-message'), chartForm = el('chart-form'), coordinatesDisplay = el('coordinates-display'), timezoneDisplayInput = el('timezone-offset-display'), formError = el('form-error'), resultsSection = el('results-section'), chartControls = el('chart-controls'), southIndianBtn = el('south-indian-btn'), northIndianBtn = el('north-indian-btn'), chartLoader = el('chart-loader'), chartDisplayArea = el('chart-display-area'), dharmaCard = el('dharma-card'), dharmaTypeDisplay = el('dharma-type-display'), chakraCard = el('chakra-card'), chakraProfileDisplay = el('chakra-profile-display'), aiCard = el('ai-card'), userQuestion = el('user-question'), getInsightBtn = el('get-insight-btn'), aiInsightLoader = el('ai-insight-loader'), aiInsightDisplay = el('ai-insight-display'), analyzeChartBtn = el('analyze-chart-btn');
 
-            // --- Core Functions ---
             async function fetchFullAnalysis(birthData, style) {
                 const response = await fetch('/.netlify/functions/generate-chart', {
                     method: 'POST',
@@ -155,16 +153,13 @@
                 const coordinates = appState.coordinatesInput ? appState.coordinatesInput.value : null;
                 const timezone = timezoneDisplayInput.value;
                 const datetimeValue = el('datetime').value;
-
                 if (!datetimeValue || !coordinates || !timezone) {
                     formError.textContent = 'Please fill all fields and select a location from the suggestions.';
                     return;
                 }
-                
                 appState.currentBirthData = { coordinates, timezone, datetimeValue };
                 analyzeChartBtn.disabled = true;
                 analyzeChartBtn.innerHTML = '<div class="loader !w-6 !h-6 !border-2 mx-auto"></div>';
-
                 try {
                     appState.fullAnalysisData = await fetchFullAnalysis(appState.currentBirthData, appState.currentChartStyle);
                     displayResults();
@@ -182,8 +177,8 @@
                 chartDisplayArea.innerHTML = svg;
                 dharmaTypeDisplay.textContent = dharmaProfile;
                 chakraProfileDisplay.textContent = chakraProfile.description;
-                
                 resultsSection.classList.remove('hidden');
+                chartControls.classList.remove('hidden');
                 chartControls.classList.add('flex');
                 dharmaCard.classList.remove('hidden');
                 chakraCard.classList.remove('hidden');
@@ -199,7 +194,6 @@
                 getInsightBtn.disabled = true;
                 aiInsightLoader.classList.remove('hidden');
                 aiInsightDisplay.textContent = '';
-
                 try {
                     const response = await fetch('/.netlify/functions/get-ai-insight', {
                         method: 'POST',
@@ -225,13 +219,13 @@
                 southIndianBtn.classList.toggle('inactive', style !== 'south-indian');
                 northIndianBtn.classList.toggle('active', style === 'north-indian');
                 northIndianBtn.classList.toggle('inactive', style !== 'north-indian');
-                
                 chartLoader.classList.remove('hidden');
                 chartDisplayArea.innerHTML = '';
                 try {
-                    const data = await fetchFullAnalysis(appState.currentBirthData, appState.currentChartStyle);
-                    appState.fullAnalysisData.svg = data.svg;
-                    chartDisplayArea.innerHTML = data.svg;
+                    // Only fetch the chart SVG, not the whole analysis again
+                    const chartData = await fetchFullAnalysis(appState.currentBirthData, appState.currentChartStyle);
+                    appState.fullAnalysisData.svg = chartData.svg;
+                    chartDisplayArea.innerHTML = chartData.svg;
                 } catch (error) {
                     formError.textContent = `Error: ${error.message}`;
                 } finally {
@@ -239,38 +233,37 @@
                 }
             }
             
-            // --- Auth Functions ---
             async function signUpWithEmail() {
                 const email = emailInput.value.trim();
                 const password = passwordInput.value.trim();
-                if (email && password) {
-                    authMessage.textContent = "Signing up...";
-                    const { data, error } = await appState.supabaseClient.auth.signUp({ email, password });
-                    if (error) {
-                        authMessage.textContent = `Error: ${error.message}`;
-                        authMessage.className = "mt-4 text-center text-sm text-red-400";
-                    } else {
-                        authMessage.textContent = data.user && !data.session ? "Sign up successful! Please check your email for a confirmation link." : "Sign up successful!";
-                        authMessage.className = "mt-4 text-center text-sm text-green-400";
-                    }
-                } else {
-                    authMessage.textContent = "Please enter both email and password.";
+                if (!email || !password) {
+                     authMessage.textContent = "Please enter both email and password.";
+                     authMessage.className = "mt-4 text-center text-sm text-red-400";
+                     return;
+                }
+                authMessage.textContent = "Signing up...";
+                const { data, error } = await appState.supabaseClient.auth.signUp({ email, password });
+                if (error) {
+                    authMessage.textContent = `Error: ${error.message}`;
                     authMessage.className = "mt-4 text-center text-sm text-red-400";
+                } else {
+                    authMessage.textContent = data.user && !data.session ? "Sign up successful! Please check your email for a confirmation link." : "Sign up successful!";
+                    authMessage.className = "mt-4 text-center text-sm text-green-400";
                 }
             }
 
             async function signInWithEmail() {
                 const email = emailInput.value.trim();
                 const password = passwordInput.value.trim();
-                if (email && password) {
-                    authMessage.textContent = "";
-                    const { error } = await appState.supabaseClient.auth.signInWithPassword({ email, password });
-                    if (error) {
-                        authMessage.textContent = `Error: ${error.message}`;
-                        authMessage.className = "mt-4 text-center text-sm text-red-400";
-                    }
-                } else {
+                if (!email || !password) {
                     authMessage.textContent = "Please enter both email and password.";
+                    authMessage.className = "mt-4 text-center text-sm text-red-400";
+                    return;
+                }
+                authMessage.textContent = "";
+                const { error } = await appState.supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) {
+                    authMessage.textContent = `Error: ${error.message}`;
                     authMessage.className = "mt-4 text-center text-sm text-red-400";
                 }
             }
@@ -286,7 +279,6 @@
                 if (!isAuthed) authMessage.textContent = "";
             }
 
-            // --- Location Widget ---
             function initializeLocationWidget() {
                 function loadScript(callback) {
                     const script = document.createElement('script');
@@ -295,7 +287,6 @@
                     script.async = true;
                     document.head.appendChild(script);
                 }
-
                 function createHiddenInput(name) {
                     let input = document.querySelector(`input[name="${name}"]`);
                     if (!input) {
@@ -306,7 +297,6 @@
                     }
                     return input;
                 }
-
                 function getTimezoneOffsetString(date, timeZone) {
                     try {
                         const dateString = date.toISOString();
@@ -329,7 +319,6 @@
                         return null;
                     }
                 }
-
                 function initWidget(input) {
                     if (!chartForm) return;
                     appState.coordinatesInput = createHiddenInput('coordinates');
@@ -338,7 +327,6 @@
                         const lon = parseFloat(data.longitude).toFixed(4);
                         appState.coordinatesInput.value = `${lat},${lon}`;
                         coordinatesDisplay.textContent = `Found: ${lat}, ${lon}`;
-                        
                         const dtInput = el('datetime');
                         let birthDate = dtInput.value ? new Date(dtInput.value) : new Date();
                         if (!dtInput.value) {
@@ -350,7 +338,6 @@
                              const minutes = now.getMinutes().toString().padStart(2, '0');
                              dtInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
                         }
-                        
                         const offset = getTimezoneOffsetString(birthDate, data.timezone);
                         if (offset) {
                             timezoneDisplayInput.value = offset;
@@ -359,11 +346,7 @@
                             formError.textContent = `Could not get TZ for ${data.timezone}.`;
                         }
                         input.setCustomValidity('');
-                    }, {
-                        clientId: appState.PROKERALA_CLIENT_ID,
-                        persistKey: `jyotish-loc-mvp-1`
-                    });
-
+                    }, { clientId: appState.PROKERALA_CLIENT_ID, persistKey: `jyotish-loc-mvp-1` });
                     input.addEventListener('change', function(e) {
                         input.setCustomValidity('Please select a location from suggestions.');
                         coordinatesDisplay.textContent = '';
@@ -371,7 +354,6 @@
                         if (appState.coordinatesInput) appState.coordinatesInput.value = '';
                     });
                 }
-
                 loadScript(() => {
                     let locationInputs = document.querySelectorAll('.prokerala-location-input');
                     Array.from(locationInputs).map(initWidget);
@@ -380,7 +362,6 @@
             
             initializeLocationWidget();
 
-            // --- Initial Auth Check and Event Listeners ---
             appState.supabaseClient.auth.onAuthStateChange((_, session) => updateUserUI(session));
             appState.supabaseClient.auth.getSession().then(({ data: { session } }) => {
                 updateUserUI(session);
