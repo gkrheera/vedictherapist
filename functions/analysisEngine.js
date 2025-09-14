@@ -1,17 +1,14 @@
-// Version: 1.1
-
-// Placeholder functions for analysis based on the framework.
-// In a real application, these would contain complex astrological logic.
+// Version: 1.2
 
 function analyzeDharmaType(planetData) {
-    // This is a simplified placeholder based on the "Framework.md" document.
-    // A real implementation would involve scoring all planets and houses.
+    // FIX: Safely access the nested planets array.
+    const planets = planetData?.data?.planets;
     
-    if (!planetData || !planetData.data || !Array.isArray(planetData.data.planets)) {
-        return "Analysis Inconclusive: Insufficient planet data.";
+    // The check now correctly verifies the existence of the planets array.
+    if (!Array.isArray(planets)) {
+        console.error("Planet data for Dharma analysis is missing or not an array:", planetData);
+        return "Analysis Inconclusive: Insufficient planet data provided.";
     }
-
-    const planets = planetData.data.planets;
     
     const scores = {
         Educator: 0,
@@ -42,9 +39,8 @@ function analyzeDharmaType(planetData) {
         }
     });
 
-    // Find the highest score
     let dominantType = 'Educator';
-    let maxScore = 0;
+    let maxScore = -1; // Start with -1 to handle cases where all scores are 0
     for (const type in scores) {
         if (scores[type] > maxScore) {
             maxScore = scores[type];
@@ -55,16 +51,21 @@ function analyzeDharmaType(planetData) {
     return `Based on planetary strengths, your primary Dharma Type appears to be: The ${dominantType}.`;
 }
 
-function analyzeChakra(dashaData, planetData) {
-    // Simplified placeholder based on the framework.
-    if (!dashaData || !dashaData.data || !dashaData.data.dasha_periods) {
+function analyzeChakra(dashaData) {
+    // FIX: Safely access the nested dasha periods array.
+    const dashaPeriods = dashaData?.data?.dasha_periods;
+
+    if (!Array.isArray(dashaPeriods) || dashaPeriods.length === 0) {
         return {
             name: "Unknown",
             description: "Analysis Inconclusive: Insufficient Dasha data."
         };
     }
     
-    const currentDashaLord = dashaData.data.dasha_periods[0]?.name || 'Sun';
+    // Find the current dasha based on today's date
+    const today = new Date();
+    const currentDasha = dashaPeriods.find(d => new Date(d.start_date) <= today && new Date(d.end_date) >= today);
+    const currentDashaLord = currentDasha?.name || dashaPeriods[0]?.name || 'Sun';
 
     const chakraMap = {
         'Sun': { name: "Solar Plexus", description: "Your current life theme revolves around personal power, will, and self-esteem." },
@@ -81,7 +82,6 @@ function analyzeChakra(dashaData, planetData) {
     return chakraMap[currentDashaLord] || chakraMap['Sun'];
 }
 
-// FIX: Export the functions so they can be used by other files.
 module.exports = {
     analyzeDharmaType,
     analyzeChakra
