@@ -1,4 +1,4 @@
-<!-- Version: 3.1 (Auth Fix) -->
+<!-- Version: 3.2 (Auth Regression Fix) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -184,6 +184,7 @@
                 chakraProfileDisplay.textContent = chakraProfile.description;
                 
                 resultsSection.classList.remove('hidden');
+                chartControls.classList.remove('hidden');
                 chartControls.classList.add('flex');
                 dharmaCard.classList.remove('hidden');
                 chakraCard.classList.remove('hidden');
@@ -294,22 +295,20 @@
               function initWidget(input){if(!chartForm)return;appState.coordinatesInput=createHiddenInput('coordinates');new LocationSearch(input,function(data){const lat=parseFloat(data.latitude).toFixed(4),lon=parseFloat(data.longitude).toFixed(4);appState.coordinatesInput.value=`${lat},${lon}`;coordinatesDisplay.textContent=`Found: ${lat}, ${lon}`;const dtInput=el('datetime');let birthDate=new Date();if(dtInput.value)birthDate=new Date(dtInput.value);else{const n=new Date(),y=n.getFullYear(),m=(n.getMonth()+1).toString().padStart(2,'0'),d=n.getDate().toString().padStart(2,'0'),h=n.getHours().toString().padStart(2,'0'),min=n.getMinutes().toString().padStart(2,'0');dtInput.value=`${y}-${m}-${d}T${h}:${min}`;birthDate=n}const offset=getTimezoneOffsetString(birthDate,data.timezone);offset?timezoneDisplayInput.value=offset:(timezoneDisplayInput.value='Error',formError.textContent=`Could not get TZ for ${data.timezone}.`);input.setCustomValidity('')},{clientId:appState.PROKERALA_CLIENT_ID,persistKey:`jyotish-loc-mvp-1`});input.addEventListener('change',function(e){input.setCustomValidity('Please select a location from suggestions.');coordinatesDisplay.textContent='';timezoneDisplayInput.value='';if(appState.coordinatesInput)appState.coordinatesInput.value='' })}
               loadScript(function(){let i=document.querySelectorAll('.prokerala-location-input');Array.from(i).map(initWidget)})}();
 
-            // --- Initializer ---
-            async function initializeApp() {
-                appState.supabaseClient.auth.onAuthStateChange((_, session) => updateUserUI(session));
+            // --- DIRECT EVENT LISTENERS ---
+            appState.supabaseClient.auth.onAuthStateChange((_, session) => updateUserUI(session));
+            (async () => {
                 const { data: { session } } = await appState.supabaseClient.auth.getSession();
                 updateUserUI(session);
-                
-                signInBtn.addEventListener('click', signInWithEmail);
-                signUpBtn.addEventListener('click', signUpWithEmail);
-                logoutBtn.addEventListener('click', signOut);
-                chartForm.addEventListener('submit', handleFormSubmit);
-                getInsightBtn.addEventListener('click', handleGetInsight);
-                southIndianBtn.addEventListener('click', () => setChartStyle('south-indian'));
-                northIndianBtn.addEventListener('click', () => setChartStyle('north-indian'));
-            }
-
-            initializeApp();
+            })();
+            
+            signInBtn.addEventListener('click', signInWithEmail);
+            signUpBtn.addEventListener('click', signUpWithEmail);
+            logoutBtn.addEventListener('click', signOut);
+            chartForm.addEventListener('submit', handleFormSubmit);
+            getInsightBtn.addEventListener('click', handleGetInsight);
+            southIndianBtn.addEventListener('click', () => setChartStyle('south-indian'));
+            northIndianBtn.addEventListener('click', () => setChartStyle('north-indian'));
         });
     </script>
 </body>
