@@ -1,4 +1,4 @@
-<!-- Version: 3.0 (MVP for Framework Testing) -->
+<!-- Version: 3.1 (Auth Fix) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -117,154 +117,201 @@
     </div>
 
     <script>
-        const appState = {
-            supabaseClient: supabase.createClient('https://wnmrbharvfaljfnjingq.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubXJiaGFydmZhbGpmbmppbmdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDMwNDYsImV4cCI6MjA3MzMxOTA0Nn0.AgjPumfwwb0sE9PsCbAz-EpySVTy8CIh1_xMFjD2nt4'),
-            PROKERALA_CLIENT_ID: 'edba7407-3766-4bc1-a618-8ff8eacb034c',
-            fullAnalysisData: null,
-            currentBirthData: null,
-            currentChartStyle: 'south-indian',
-            coordinatesInput: null
-        };
-        const el = (id) => document.getElementById(id);
-        const loggedInView = el('logged-in-view'), loggedOutView = el('logged-out-view'), logoutBtn = el('logout-btn'), signInBtn = el('signin-btn'), signUpBtn = el('signup-btn'), emailInput = el('email-input'), passwordInput = el('password-input'), authMessage = el('auth-message'), chartForm = el('chart-form'), coordinatesDisplay = el('coordinates-display'), timezoneDisplayInput = el('timezone-offset-display'), formError = el('form-error'), resultsSection = el('results-section'), chartControls = el('chart-controls'), southIndianBtn = el('south-indian-btn'), northIndianBtn = el('north-indian-btn'), chartLoader = el('chart-loader'), chartDisplayArea = el('chart-display-area'), dharmaCard = el('dharma-card'), dharmaTypeDisplay = el('dharma-type-display'), chakraCard = el('chakra-card'), chakraProfileDisplay = el('chakra-profile-display'), aiCard = el('ai-card'), userQuestion = el('user-question'), getInsightBtn = el('get-insight-btn'), aiInsightLoader = el('ai-insight-loader'), aiInsightDisplay = el('ai-insight-display'), analyzeChartBtn = el('analyze-chart-btn');
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- App State ---
+            const appState = {
+                supabaseClient: supabase.createClient('https://wnmrbharvfaljfnjingq.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubXJiaGFydmZhbGpmbmppbmdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDMwNDYsImV4cCI6MjA3MzMxOTA0Nn0.AgjPumfwwb0sE9PsCbAz-EpySVTy8CIh1_xMFjD2nt4'),
+                PROKERALA_CLIENT_ID: 'edba7407-3766-4bc1-a618-8ff8eacb034c',
+                fullAnalysisData: null,
+                currentBirthData: null,
+                currentChartStyle: 'south-indian',
+                coordinatesInput: null
+            };
 
-        async function fetchFullAnalysis(birthData, style) {
-            const FUNCTION_ENDPOINT = '/.netlify/functions/generate-chart';
-            const response = await fetch(FUNCTION_ENDPOINT, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    datetime: `${birthData.datetimeValue}:00${birthData.timezone}`,
-                    coordinates: birthData.coordinates,
-                    ayanamsa: '1',
-                    chart_style: style
-                })
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to generate chart and analysis.');
-            return data;
-        }
+            // --- DOM Element References ---
+            const el = (id) => document.getElementById(id);
+            const loggedInView = el('logged-in-view'), loggedOutView = el('logged-out-view'), logoutBtn = el('logout-btn'), signInBtn = el('signin-btn'), signUpBtn = el('signup-btn'), emailInput = el('email-input'), passwordInput = el('password-input'), authMessage = el('auth-message'), chartForm = el('chart-form'), coordinatesDisplay = el('coordinates-display'), timezoneDisplayInput = el('timezone-offset-display'), formError = el('form-error'), resultsSection = el('results-section'), chartControls = el('chart-controls'), southIndianBtn = el('south-indian-btn'), northIndianBtn = el('north-indian-btn'), chartLoader = el('chart-loader'), chartDisplayArea = el('chart-display-area'), dharmaCard = el('dharma-card'), dharmaTypeDisplay = el('dharma-type-display'), chakraCard = el('chakra-card'), chakraProfileDisplay = el('chakra-profile-display'), aiCard = el('ai-card'), userQuestion = el('user-question'), getInsightBtn = el('get-insight-btn'), aiInsightLoader = el('ai-insight-loader'), aiInsightDisplay = el('ai-insight-display'), analyzeChartBtn = el('analyze-chart-btn');
 
-        async function handleFormSubmit(event) {
-            event.preventDefault();
-            formError.textContent = '';
-            const coordinates = appState.coordinatesInput ? appState.coordinatesInput.value : null;
-            const timezone = timezoneDisplayInput.value;
-            const datetimeValue = el('datetime').value;
-
-            if (!datetimeValue || !coordinates || !timezone) {
-                formError.textContent = 'Please fill all fields and select a location from the suggestions.';
-                return;
-            }
-            
-            appState.currentBirthData = { coordinates, timezone, datetimeValue };
-            analyzeChartBtn.disabled = true;
-            analyzeChartBtn.innerHTML = '<div class="loader !w-6 !h-6 !border-2 mx-auto"></div>';
-
-            try {
-                appState.fullAnalysisData = await fetchFullAnalysis(appState.currentBirthData, appState.currentChartStyle);
-                displayResults();
-            } catch (error) {
-                console.error('Analysis failed:', error);
-                formError.textContent = `Error: ${error.message}`;
-            } finally {
-                analyzeChartBtn.disabled = false;
-                analyzeChartBtn.textContent = 'Analyze My Chart';
-            }
-        }
-
-        function displayResults() {
-            const { svg, dharmaProfile, chakraProfile } = appState.fullAnalysisData;
-            chartDisplayArea.innerHTML = svg;
-            dharmaTypeDisplay.textContent = dharmaProfile;
-            chakraProfileDisplay.textContent = chakraProfile.description;
-            
-            resultsSection.classList.remove('hidden');
-            chartControls.classList.remove('hidden');
-            chartControls.classList.add('flex');
-            dharmaCard.classList.remove('hidden');
-            chakraCard.classList.remove('hidden');
-            aiCard.classList.remove('hidden');
-        }
-
-        async function handleGetInsight() {
-            const question = userQuestion.value.trim();
-            if (!question || !appState.fullAnalysisData) {
-                aiInsightDisplay.textContent = "Please ask a question after generating a chart.";
-                return;
-            }
-            getInsightBtn.disabled = true;
-            aiInsightLoader.classList.remove('hidden');
-            aiInsightDisplay.textContent = '';
-
-            try {
-                const response = await fetch('/.netlify/functions/get-ai-insight', {
+            // --- Core Functions ---
+            async function fetchFullAnalysis(birthData, style) {
+                const response = await fetch('/.netlify/functions/generate-chart', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...appState.fullAnalysisData, userQuestion: question })
+                    body: JSON.stringify({
+                        datetime: `${birthData.datetimeValue}:00${birthData.timezone}`,
+                        coordinates: birthData.coordinates,
+                        ayanamsa: '1',
+                        chart_style: style
+                    })
                 });
-                 const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Failed to get insight.');
-                aiInsightDisplay.textContent = data.insight;
-            } catch(error) {
-                console.error("AI Insight Error:", error);
-                aiInsightDisplay.textContent = `Error: ${error.message}`;
-            } finally {
-                getInsightBtn.disabled = false;
-                aiInsightLoader.classList.add('hidden');
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to generate chart and analysis.');
+                return data;
             }
-        }
-        
-        async function setChartStyle(style) {
-            if (style === appState.currentChartStyle) return;
-            appState.currentChartStyle = style;
-            southIndianBtn.classList.toggle('active', style === 'south-indian');
-            southIndianBtn.classList.toggle('inactive', style !== 'south-indian');
-            northIndianBtn.classList.toggle('active', style === 'north-indian');
-            northIndianBtn.classList.toggle('inactive', style !== 'north-indian');
+
+            async function handleFormSubmit(event) {
+                event.preventDefault();
+                formError.textContent = '';
+                const coordinates = appState.coordinatesInput ? appState.coordinatesInput.value : null;
+                const timezone = timezoneDisplayInput.value;
+                const datetimeValue = el('datetime').value;
+
+                if (!datetimeValue || !coordinates || !timezone) {
+                    formError.textContent = 'Please fill all fields and select a location from the suggestions.';
+                    return;
+                }
+                
+                appState.currentBirthData = { coordinates, timezone, datetimeValue };
+                analyzeChartBtn.disabled = true;
+                analyzeChartBtn.innerHTML = '<div class="loader !w-6 !h-6 !border-2 mx-auto"></div>';
+
+                try {
+                    appState.fullAnalysisData = await fetchFullAnalysis(appState.currentBirthData, appState.currentChartStyle);
+                    displayResults();
+                } catch (error) {
+                    console.error('Analysis failed:', error);
+                    formError.textContent = `Error: ${error.message}`;
+                } finally {
+                    analyzeChartBtn.disabled = false;
+                    analyzeChartBtn.textContent = 'Analyze My Chart';
+                }
+            }
+
+            function displayResults() {
+                const { svg, dharmaProfile, chakraProfile } = appState.fullAnalysisData;
+                chartDisplayArea.innerHTML = svg;
+                dharmaTypeDisplay.textContent = dharmaProfile;
+                chakraProfileDisplay.textContent = chakraProfile.description;
+                
+                resultsSection.classList.remove('hidden');
+                chartControls.classList.add('flex');
+                dharmaCard.classList.remove('hidden');
+                chakraCard.classList.remove('hidden');
+                aiCard.classList.remove('hidden');
+            }
+
+             async function handleGetInsight() {
+                const question = userQuestion.value.trim();
+                if (!question || !appState.fullAnalysisData) {
+                    aiInsightDisplay.textContent = "Please ask a question after generating a chart.";
+                    return;
+                }
+                getInsightBtn.disabled = true;
+                aiInsightLoader.classList.remove('hidden');
+                aiInsightDisplay.textContent = '';
+
+                try {
+                    const response = await fetch('/.netlify/functions/get-ai-insight', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...appState.fullAnalysisData, userQuestion: question })
+                    });
+                     const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || 'Failed to get insight.');
+                    aiInsightDisplay.textContent = data.insight;
+                } catch(error) {
+                    console.error("AI Insight Error:", error);
+                    aiInsightDisplay.textContent = `Error: ${error.message}`;
+                } finally {
+                    getInsightBtn.disabled = false;
+                    aiInsightLoader.classList.add('hidden');
+                }
+            }
+
+            async function setChartStyle(style) {
+                if (style === appState.currentChartStyle) return;
+                appState.currentChartStyle = style;
+                southIndianBtn.classList.toggle('active', style === 'south-indian');
+                southIndianBtn.classList.toggle('inactive', style !== 'south-indian');
+                northIndianBtn.classList.toggle('active', style === 'north-indian');
+                northIndianBtn.classList.toggle('inactive', style !== 'north-indian');
+                
+                chartLoader.classList.remove('hidden');
+                chartDisplayArea.innerHTML = '';
+                try {
+                    const data = await fetchFullAnalysis(appState.currentBirthData, appState.currentChartStyle);
+                    appState.fullAnalysisData.svg = data.svg;
+                    chartDisplayArea.innerHTML = data.svg;
+                } catch (error) {
+                    formError.textContent = `Error: ${error.message}`;
+                } finally {
+                    chartLoader.classList.add('hidden');
+                }
+            }
             
-            chartLoader.classList.remove('hidden');
-            chartDisplayArea.innerHTML = '';
-            try {
-                const data = await fetchFullAnalysis(appState.currentBirthData, appState.currentChartStyle);
-                appState.fullAnalysisData.svg = data.svg;
-                chartDisplayArea.innerHTML = data.svg;
-            } catch (error) {
-                formError.textContent = `Error: ${error.message}`;
-            } finally {
-                chartLoader.classList.add('hidden');
+            // --- Auth Functions ---
+            async function signUpWithEmail() {
+                const email = emailInput.value.trim();
+                const password = passwordInput.value.trim();
+                if (email && password) {
+                    authMessage.textContent = "Signing up...";
+                    const { data, error } = await appState.supabaseClient.auth.signUp({ email, password });
+                    if (error) {
+                        authMessage.textContent = `Error: ${error.message}`;
+                        authMessage.className = "mt-4 text-center text-sm text-red-400";
+                    } else {
+                        authMessage.textContent = data.user && !data.session ? "Sign up successful! Please check your email for a confirmation link." : "Sign up successful!";
+                        authMessage.className = "mt-4 text-center text-sm text-green-400";
+                    }
+                } else {
+                    authMessage.textContent = "Please enter both email and password.";
+                    authMessage.className = "mt-4 text-center text-sm text-red-400";
+                }
             }
-        }
 
-        // --- Event Listeners & Initializers ---
-        chartForm.addEventListener('submit', handleFormSubmit);
-        getInsightBtn.addEventListener('click', handleGetInsight);
-        southIndianBtn.addEventListener('click', () => setChartStyle('south-indian'));
-        northIndianBtn.addEventListener('click', () => setChartStyle('north-indian'));
-        // ... (Supabase listeners and initializers) ...
-        signInBtn.addEventListener('click', signInWithEmail);
-        signUpBtn.addEventListener('click', signUpWithEmail);
-        logoutBtn.addEventListener('click', signOut);
-        appState.supabaseClient.auth.onAuthStateChange((_, session) => updateUserUI(session));
-        document.addEventListener('DOMContentLoaded', async () => {
-            const { data: { session } } = await appState.supabaseClient.auth.getSession();
-            updateUserUI(session);
+            async function signInWithEmail() {
+                const email = emailInput.value.trim();
+                const password = passwordInput.value.trim();
+                if (email && password) {
+                    authMessage.textContent = "";
+                    const { error } = await appState.supabaseClient.auth.signInWithPassword({ email, password });
+                    if (error) {
+                        authMessage.textContent = `Error: ${error.message}`;
+                        authMessage.className = "mt-4 text-center text-sm text-red-400";
+                    }
+                } else {
+                    authMessage.textContent = "Please enter both email and password.";
+                    authMessage.className = "mt-4 text-center text-sm text-red-400";
+                }
+            }
+
+            async function signOut() {
+                await appState.supabaseClient.auth.signOut();
+            }
+
+            function updateUserUI(session) {
+                const isAuthed = !!session;
+                loggedInView.classList.toggle("hidden", !isAuthed);
+                loggedOutView.classList.toggle("hidden", isAuthed);
+                if (!isAuthed) authMessage.textContent = "";
+            }
+
+            // --- Location Widget ---
+            (function () {
+              function loadScript(cb){const s=document.createElement('script');s.src='https://client-api.prokerala.com/static/js/location.min.js';s.onload=cb;s.async=1;document.head.appendChild(s)}
+              function createHiddenInput(name){let i=document.querySelector(`input[name="${name}"]`);return i||(i=document.createElement('input'),i.name=name,i.type='hidden',chartForm.appendChild(i)),i}
+              function getTimezoneOffsetString(date,tz){try{const o=new Date(date.toISOString().substring(0,date.toISOString().lastIndexOf('.'))),t=new Intl.DateTimeFormat('en-US',{timeZone:tz,timeZoneName:'longOffset'}).formatToParts(o).find(p=>'timeZoneName'===p.type);if(t){const[e,n]=t.value.replace('GMT','').split(':'),s=e.substring(0,1),a=e.substring(1).padStart(2,'0'),i=(n||"00").padStart(2,'0');return`${s}${a}:${i}`}return null}catch(e){return console.error("Could not determine timezone offset:",e),null}}
+              function initWidget(input){if(!chartForm)return;appState.coordinatesInput=createHiddenInput('coordinates');new LocationSearch(input,function(data){const lat=parseFloat(data.latitude).toFixed(4),lon=parseFloat(data.longitude).toFixed(4);appState.coordinatesInput.value=`${lat},${lon}`;coordinatesDisplay.textContent=`Found: ${lat}, ${lon}`;const dtInput=el('datetime');let birthDate=new Date();if(dtInput.value)birthDate=new Date(dtInput.value);else{const n=new Date(),y=n.getFullYear(),m=(n.getMonth()+1).toString().padStart(2,'0'),d=n.getDate().toString().padStart(2,'0'),h=n.getHours().toString().padStart(2,'0'),min=n.getMinutes().toString().padStart(2,'0');dtInput.value=`${y}-${m}-${d}T${h}:${min}`;birthDate=n}const offset=getTimezoneOffsetString(birthDate,data.timezone);offset?timezoneDisplayInput.value=offset:(timezoneDisplayInput.value='Error',formError.textContent=`Could not get TZ for ${data.timezone}.`);input.setCustomValidity('')},{clientId:appState.PROKERALA_CLIENT_ID,persistKey:`jyotish-loc-mvp-1`});input.addEventListener('change',function(e){input.setCustomValidity('Please select a location from suggestions.');coordinatesDisplay.textContent='';timezoneDisplayInput.value='';if(appState.coordinatesInput)appState.coordinatesInput.value='' })}
+              loadScript(function(){let i=document.querySelectorAll('.prokerala-location-input');Array.from(i).map(initWidget)})}();
+
+            // --- Initializer ---
+            async function initializeApp() {
+                appState.supabaseClient.auth.onAuthStateChange((_, session) => updateUserUI(session));
+                const { data: { session } } = await appState.supabaseClient.auth.getSession();
+                updateUserUI(session);
+                
+                signInBtn.addEventListener('click', signInWithEmail);
+                signUpBtn.addEventListener('click', signUpWithEmail);
+                logoutBtn.addEventListener('click', signOut);
+                chartForm.addEventListener('submit', handleFormSubmit);
+                getInsightBtn.addEventListener('click', handleGetInsight);
+                southIndianBtn.addEventListener('click', () => setChartStyle('south-indian'));
+                northIndianBtn.addEventListener('click', () => setChartStyle('north-indian'));
+            }
+
+            initializeApp();
         });
-
-        // --- Auth Functions & Location Widget ---
-        async function signUpWithEmail(){const e=emailInput.value.trim(),t=passwordInput.value.trim();if(e&&t){authMessage.textContent="Signing up...";const{data:s,error:n}=await appState.supabaseClient.auth.signUp({email:e,password:t});n?(authMessage.textContent=`Error: ${n.message}`,authMessage.className="mt-4 text-center text-sm text-red-400"):(s.user&&!s.session?authMessage.textContent="Sign up successful! Please check your email for a confirmation link.":authMessage.textContent="Sign up successful!",authMessage.className="mt-4 text-center text-sm text-green-400")}else authMessage.textContent="Please enter both email and password.",authMessage.className="mt-4 text-center text-sm text-red-400"}
-        async function signInWithEmail(){const e=emailInput.value.trim(),t=passwordInput.value.trim();if(e&&t){authMessage.textContent="";const{error:s}=await appState.supabaseClient.auth.signInWithPassword({email:e,password:t});s&&(authMessage.textContent=`Error: ${s.message}`,authMessage.className="mt-4 text-center text-sm text-red-400")}else authMessage.textContent="Please enter both email and password.",authMessage.className="mt-4 text-center text-sm text-red-400"}
-        async function signOut(){await appState.supabaseClient.auth.signOut()}
-        function updateUserUI(session){const isAuthed=!!session;loggedInView.classList.toggle("hidden",!isAuthed);loggedOutView.classList.toggle("hidden",isAuthed);if(!isAuthed)authMessage.textContent=""}
-        
-        (function () {
-          function loadScript(cb) {const s=document.createElement('script');s.src='https://client-api.prokerala.com/static/js/location.min.js';s.onload=cb;s.async=1;document.head.appendChild(s)}
-          function createHiddenInput(name){let i=document.querySelector(`input[name="${name}"]`);return i||(i=document.createElement('input'),i.name=name,i.type='hidden',chartForm.appendChild(i)),i}
-          function getTimezoneOffsetString(date,tz){try{const o=new Date(date.toISOString().substring(0,date.toISOString().lastIndexOf('.'))),t=new Intl.DateTimeFormat('en-US',{timeZone:tz,timeZoneName:'longOffset'}).formatToParts(o).find(p=>'timeZoneName'===p.type);if(t){const[e,n]=t.value.replace('GMT','').split(':'),s=e.substring(0,1),a=e.substring(1).padStart(2,'0'),i=(n||"00").padStart(2,'0');return`${s}${a}:${i}`}return null}catch(e){return console.error("Could not determine timezone offset:",e),null}}
-          function initWidget(input){if(!chartForm)return;appState.coordinatesInput=createHiddenInput('coordinates');new LocationSearch(input,function(data){const lat=parseFloat(data.latitude).toFixed(4),lon=parseFloat(data.longitude).toFixed(4);appState.coordinatesInput.value=`${lat},${lon}`;coordinatesDisplay.textContent=`Found: ${lat}, ${lon}`;const dtInput=el('datetime');let birthDate=new Date();if(dtInput.value)birthDate=new Date(dtInput.value);else{const n=new Date(),y=n.getFullYear(),m=(n.getMonth()+1).toString().padStart(2,'0'),d=n.getDate().toString().padStart(2,'0'),h=n.getHours().toString().padStart(2,'0'),min=n.getMinutes().toString().padStart(2,'0');dtInput.value=`${y}-${m}-${d}T${h}:${min}`;birthDate=n}const offset=getTimezoneOffsetString(birthDate,data.timezone);offset?timezoneDisplayInput.value=offset:(timezoneDisplayInput.value='Error',formError.textContent=`Could not get TZ for ${data.timezone}.`);input.setCustomValidity('')},{clientId:appState.PROKERALA_CLIENT_ID,persistKey:`jyotish-loc-mvp-1`});input.addEventListener('change',function(e){input.setCustomValidity('Please select a location from suggestions.');coordinatesDisplay.textContent='';timezoneDisplayInput.value='';if(appState.coordinatesInput)appState.coordinatesInput.value='' })}
-          loadScript(function(){let i=document.querySelectorAll('.prokerala-location-input');Array.from(i).map(initWidget)})}();
     </script>
-
 </body>
 </html>
 
