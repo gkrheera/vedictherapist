@@ -1,4 +1,4 @@
-<!-- Version: 3.2 (Auth Regression Fix) -->
+<!-- Version: 3.3 (Auth Syntax & Readability Fix) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -184,7 +184,6 @@
                 chakraProfileDisplay.textContent = chakraProfile.description;
                 
                 resultsSection.classList.remove('hidden');
-                chartControls.classList.remove('hidden');
                 chartControls.classList.add('flex');
                 dharmaCard.classList.remove('hidden');
                 chakraCard.classList.remove('hidden');
@@ -288,19 +287,104 @@
             }
 
             // --- Location Widget ---
-            (function () {
-              function loadScript(cb){const s=document.createElement('script');s.src='https://client-api.prokerala.com/static/js/location.min.js';s.onload=cb;s.async=1;document.head.appendChild(s)}
-              function createHiddenInput(name){let i=document.querySelector(`input[name="${name}"]`);return i||(i=document.createElement('input'),i.name=name,i.type='hidden',chartForm.appendChild(i)),i}
-              function getTimezoneOffsetString(date,tz){try{const o=new Date(date.toISOString().substring(0,date.toISOString().lastIndexOf('.'))),t=new Intl.DateTimeFormat('en-US',{timeZone:tz,timeZoneName:'longOffset'}).formatToParts(o).find(p=>'timeZoneName'===p.type);if(t){const[e,n]=t.value.replace('GMT','').split(':'),s=e.substring(0,1),a=e.substring(1).padStart(2,'0'),i=(n||"00").padStart(2,'0');return`${s}${a}:${i}`}return null}catch(e){return console.error("Could not determine timezone offset:",e),null}}
-              function initWidget(input){if(!chartForm)return;appState.coordinatesInput=createHiddenInput('coordinates');new LocationSearch(input,function(data){const lat=parseFloat(data.latitude).toFixed(4),lon=parseFloat(data.longitude).toFixed(4);appState.coordinatesInput.value=`${lat},${lon}`;coordinatesDisplay.textContent=`Found: ${lat}, ${lon}`;const dtInput=el('datetime');let birthDate=new Date();if(dtInput.value)birthDate=new Date(dtInput.value);else{const n=new Date(),y=n.getFullYear(),m=(n.getMonth()+1).toString().padStart(2,'0'),d=n.getDate().toString().padStart(2,'0'),h=n.getHours().toString().padStart(2,'0'),min=n.getMinutes().toString().padStart(2,'0');dtInput.value=`${y}-${m}-${d}T${h}:${min}`;birthDate=n}const offset=getTimezoneOffsetString(birthDate,data.timezone);offset?timezoneDisplayInput.value=offset:(timezoneDisplayInput.value='Error',formError.textContent=`Could not get TZ for ${data.timezone}.`);input.setCustomValidity('')},{clientId:appState.PROKERALA_CLIENT_ID,persistKey:`jyotish-loc-mvp-1`});input.addEventListener('change',function(e){input.setCustomValidity('Please select a location from suggestions.');coordinatesDisplay.textContent='';timezoneDisplayInput.value='';if(appState.coordinatesInput)appState.coordinatesInput.value='' })}
-              loadScript(function(){let i=document.querySelectorAll('.prokerala-location-input');Array.from(i).map(initWidget)})}();
+            function initializeLocationWidget() {
+                function loadScript(callback) {
+                    const script = document.createElement('script');
+                    script.src = 'https://client-api.prokerala.com/static/js/location.min.js';
+                    script.onload = callback;
+                    script.async = true;
+                    document.head.appendChild(script);
+                }
 
-            // --- DIRECT EVENT LISTENERS ---
+                function createHiddenInput(name) {
+                    let input = document.querySelector(`input[name="${name}"]`);
+                    if (!input) {
+                        input = document.createElement('input');
+                        input.name = name;
+                        input.type = 'hidden';
+                        chartForm.appendChild(input);
+                    }
+                    return input;
+                }
+
+                function getTimezoneOffsetString(date, timeZone) {
+                    try {
+                        const dateString = date.toISOString();
+                        const utcDate = new Date(dateString.substring(0, dateString.lastIndexOf('.')));
+                        const formatter = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'longOffset' });
+                        const parts = formatter.formatToParts(utcDate);
+                        const gmtPart = parts.find(part => part.type === 'timeZoneName');
+
+                        if (gmtPart) {
+                            const offset = gmtPart.value.replace('GMT', '');
+                            const [hoursStr, minutesStr] = offset.split(':');
+                            const sign = hoursStr.substring(0, 1);
+                            const hours = hoursStr.substring(1).padStart(2, '0');
+                            const minutes = (minutesStr || "00").padStart(2, '0');
+                            return `${sign}${hours}:${minutes}`;
+                        }
+                        return null;
+                    } catch (e) {
+                        console.error("Could not determine timezone offset:", e);
+                        return null;
+                    }
+                }
+
+                function initWidget(input) {
+                    if (!chartForm) return;
+                    appState.coordinatesInput = createHiddenInput('coordinates');
+                    new LocationSearch(input, function(data) {
+                        const lat = parseFloat(data.latitude).toFixed(4);
+                        const lon = parseFloat(data.longitude).toFixed(4);
+                        appState.coordinatesInput.value = `${lat},${lon}`;
+                        coordinatesDisplay.textContent = `Found: ${lat}, ${lon}`;
+                        
+                        const dtInput = el('datetime');
+                        let birthDate = dtInput.value ? new Date(dtInput.value) : new Date();
+                        if (!dtInput.value) {
+                             const now = new Date();
+                             const year = now.getFullYear();
+                             const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                             const day = now.getDate().toString().padStart(2, '0');
+                             const hours = now.getHours().toString().padStart(2, '0');
+                             const minutes = now.getMinutes().toString().padStart(2, '0');
+                             dtInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                        }
+                        
+                        const offset = getTimezoneOffsetString(birthDate, data.timezone);
+                        if (offset) {
+                            timezoneDisplayInput.value = offset;
+                        } else {
+                            timezoneDisplayInput.value = 'Error';
+                            formError.textContent = `Could not get TZ for ${data.timezone}.`;
+                        }
+                        input.setCustomValidity('');
+                    }, {
+                        clientId: appState.PROKERALA_CLIENT_ID,
+                        persistKey: `jyotish-loc-mvp-1`
+                    });
+
+                    input.addEventListener('change', function(e) {
+                        input.setCustomValidity('Please select a location from suggestions.');
+                        coordinatesDisplay.textContent = '';
+                        timezoneDisplayInput.value = '';
+                        if (appState.coordinatesInput) appState.coordinatesInput.value = '';
+                    });
+                }
+
+                loadScript(() => {
+                    let locationInputs = document.querySelectorAll('.prokerala-location-input');
+                    Array.from(locationInputs).map(initWidget);
+                });
+            }
+            
+            initializeLocationWidget();
+
+            // --- Initial Auth Check and Event Listeners ---
             appState.supabaseClient.auth.onAuthStateChange((_, session) => updateUserUI(session));
-            (async () => {
-                const { data: { session } } = await appState.supabaseClient.auth.getSession();
+            appState.supabaseClient.auth.getSession().then(({ data: { session } }) => {
                 updateUserUI(session);
-            })();
+            });
             
             signInBtn.addEventListener('click', signInWithEmail);
             signUpBtn.addEventListener('click', signUpWithEmail);
