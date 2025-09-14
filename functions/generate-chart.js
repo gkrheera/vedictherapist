@@ -1,80 +1,98 @@
-// Version: 2.0 (MVP Analysis Engine)
+// Version: 2.1
 const fetch = require('node-fetch');
-const { getDharmaType, getChakraProfile } = require('./analysisEngine');
+const { URLSearchParams } = require('url');
+const { analyzeDharmaType, analyzeChakra } = require('./analysisEngine');
 
-// Helper to create API URLs
-const createApiUrl = (baseUrl, endpoint, params) => {
-    const url = new URL(endpoint, baseUrl);
-    url.search = new URLSearchParams(params).toString();
-    return url.toString();
+const API_HOST = 'https://api.prokerala.com';
+const TOKEN_URL = `${API_HOST}/token`;
+
+// Helper to get the auth token
+const getAuthToken = async (clientId, clientSecret) => {
+    const params = new URLSearchParams();
+    params.append('grant_type', 'client_credentials');
+    params.append('client_id', clientId);
+    params.append('client_secret', clientSecret);
+
+    const response = await fetch(TOKEN_URL, {
+        method: 'POST',
+        body: params,
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to authenticate with Prokerala API');
+    }
+    const data = await response.json();
+    return data.access_token;
 };
 
-exports.handler = async function(event) {
-    if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
+// Helper to make an authenticated API call
+const fetchWithAuth = async (url, token) => {
+    const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.errors?.[0]?.detail || 'A Prokerala API call failed.');
     }
+    return response;
+};
 
-    const { datetime, coordinates, chart_style, ayanamsa } = JSON.parse(event.body);
-    const clientId = process.env.PROKERALA_CLIENT_ID;
-    const clientSecret = process.env.PROKERALA_CLIENT_SECRET;
-    const API_BASE_URL = 'https://api.prokerala.com/';
-
-    if (!clientId || !clientSecret) {
-        return { statusCode: 500, body: JSON.stringify({ error: 'API credentials are not configured.' }) };
-    }
-
+exports.handler = async (event, context) => {
     try {
-        // 1. Fetch OAuth2 Token
-        const tokenResponse = await fetch(`${API_BASE_URL}token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                grant_type: 'client_credentials',
-                client_id: clientId,
-                client_secret: clientSecret,
-            }),
-        });
-        if (!tokenResponse.ok) throw new Error('Failed to authenticate with Prokerala API.');
-        const tokenData = await tokenResponse.json();
-        const accessToken = tokenData.access_token;
-        const authHeader = { 'Authorization': `Bearer ${accessToken}` };
+        const { PROKERALA_CLIENT_ID, PROKERALA_CLIENT_SECRET } = process.env;
+        const { datetime, coordinates, ayanamsa, chart_style } = JSON.parse(event.body);
 
-        // 2. Prepare parameters for parallel API calls
-        const commonParams = { datetime, coordinates, ayanamsa };
-        const chartParams = { ...commonParams, chart_style, chart_type: 'rasi' };
+        if (!datetime || !coordinates) {
+            return { statusCode: 400, body: JSON.stringify({ error: 'Missing required birth data.' }) };
+        }
         
-        const chartUrl = createApiUrl(API_BASE_URL, 'v2/astrology/chart', chartParams);
-        const kundliUrl = createApiUrl(API_BASE_URL, 'v2/astrology/kundli/advanced', commonParams);
-        const dashaUrl = createApiUrl(API_BASE_URL, 'v2/astrology/dasha-periods', commonParams);
+        const token = await getAuthToken(PROKERALA_CLIENT_ID, PROKERALA_CLIENT_SECRET);
 
-        // 3. Make API calls in parallel
-        const [chartRes, kundliRes, dashaRes] = await Promise.all([
-            fetch(chartUrl, { headers: authHeader }),
-            fetch(kundliUrl, { headers: authHeader }),
-            fetch(dashaUrl, { headers: authHeader }),
+        // --- FIX: Create two sets of params ---
+        // 1. Simple params for most endpoints
+        const simpleParams = new URLSearchParams({ datetime, coordinates, ayanamsa });
+
+        // 2. Special nested params for natal-planet-position
+        const planetParams = new URLSearchParams({
+            'profile[datetime]': datetime,
+            'profile[coordinates]': coordinates,
+            ayanamsa
+        });
+
+        const kundliUrl = `${API_HOST}/v2/astrology/kundli?${simpleParams}`;
+        const dashaUrl = `${API_HOST}/v2/astrology/dasha-periods?${simpleParams}`;
+        const planetsUrl = `${API_HOST}/v2/astrology/natal-planet-position?${planetParams}`;
+        
+        const [kundliResponse, dashaResponse, planetsResponse] = await Promise.all([
+            fetchWithAuth(kundliUrl, token),
+            fetchWithAuth(dashaUrl, token),
+            fetchWithAuth(planetsUrl, token)
         ]);
 
-        if (!chartRes.ok || !kundliRes.ok || !dashaRes.ok) {
-            throw new Error('One or more Prokerala API requests failed.');
-        }
-
-        const chartSvg = await chartRes.text();
-        const kundliData = await kundliRes.json();
-        const dashaData = await dashaRes.json();
+        const kundliData = await kundliResponse.json();
+        const dashaData = await dashaResponse.json();
+        const planetData = await planetsResponse.json();
         
-        // 4. Run the Analysis Engine
-        const dharmaProfile = getDharmaType(kundliData.data);
-        const chakraProfile = getChakraProfile(dashaData.data);
+        // Now fetch the chart SVG
+        const chartParams = new URLSearchParams({ datetime, coordinates, ayanamsa, chart_type: 'rasi', chart_style });
+        const chartUrl = `${API_HOST}/v2/astrology/chart?${chartParams}`;
+        const chartResponse = await fetchWithAuth(chartUrl, token);
+        const svg = await chartResponse.text();
 
-        // 5. Return the comprehensive payload
+        // Perform analysis using the fetched data
+        const dharmaProfile = analyzeDharmaType(planetData);
+        const chakraProfile = analyzeChakra(dashaData, planetData);
+
         return {
             statusCode: 200,
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                svg: chartSvg,
+                svg,
                 kundliData: kundliData.data,
                 dashaData: dashaData.data,
-                dharmaProfile: dharmaProfile,
-                chakraProfile: chakraProfile
+                planetData: planetData.data,
+                dharmaProfile,
+                chakraProfile
             }),
         };
 
