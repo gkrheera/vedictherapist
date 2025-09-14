@@ -1,63 +1,89 @@
-// Version: 1.0
-// This module contains the logic for translating raw astrological data
-// into the Dharma Type and Chakra profiles based on the framework.
+// Version: 1.1
 
-/**
- * Determines the Dharma Type based on key planetary strengths.
- * This is a simplified model for the MVP.
- * @param {object} kundliData - The detailed kundli data from Prokerala.
- * @returns {string} The calculated Dharma Type.
- */
-function getDharmaType(kundliData) {
-    const planets = kundliData.planets;
-    // Simple logic for MVP: Find the strongest planet based on dignity or house.
-    // This can be expanded with more sophisticated rules later.
-    const sun = planets.find(p => p.name === 'Sun');
-    const mars = planets.find(p => p.name === 'Mars');
-    const jupiter = planets.find(p => p.name === 'Jupiter');
-    const mercury = planets.find(p => p.name === 'Mercury');
-    const venus = planets.find(p => p.name === 'Venus');
-    const moon = planets.find(p => p.name === 'Moon');
-    const saturn = planets.find(p => p.name === 'Saturn');
-    const rahu = planets.find(p => p.name === 'Rahu');
+// Placeholder functions for analysis based on the framework.
+// In a real application, these would contain complex astrological logic.
 
-    // A very basic priority system for the MVP
-    if (jupiter.position > 8 || mercury.position > 8) return 'The Educator';
-    if (sun.house === 10 || mars.house === 10 || sun.house === 1 || mars.house === 1) return 'The Warrior';
-    if (venus.house === 2 || venus.house === 7 || mercury.house === 11) return 'The Merchant';
-    if (moon.house === 4 || saturn.house === 6) return 'The Laborer';
-    if (rahu.house === 12) return 'The Outsider';
+function analyzeDharmaType(planetData) {
+    // This is a simplified placeholder based on the "Framework.md" document.
+    // A real implementation would involve scoring all planets and houses.
     
-    return 'The Educator'; // Default for MVP
+    if (!planetData || !planetData.data || !Array.isArray(planetData.data.planets)) {
+        return "Analysis Inconclusive: Insufficient planet data.";
+    }
+
+    const planets = planetData.data.planets;
+    
+    const scores = {
+        Educator: 0,
+        Warrior: 0,
+        Merchant: 0,
+        Laborer: 0,
+        Outsider: 0
+    };
+
+    const planetSignificators = {
+        'Jupiter': 'Educator',
+        'Mercury': ['Educator', 'Merchant'],
+        'Mars': 'Warrior',
+        'Sun': 'Warrior',
+        'Venus': 'Merchant',
+        'Moon': 'Laborer',
+        'Saturn': 'Laborer',
+        'Rahu': 'Outsider',
+        'Ketu': 'Outsider'
+    };
+
+    planets.forEach(planet => {
+        const significator = planetSignificators[planet.name];
+        if (Array.isArray(significator)) {
+            significator.forEach(type => scores[type]++);
+        } else if (significator) {
+            scores[significator]++;
+        }
+    });
+
+    // Find the highest score
+    let dominantType = 'Educator';
+    let maxScore = 0;
+    for (const type in scores) {
+        if (scores[type] > maxScore) {
+            maxScore = scores[type];
+            dominantType = type;
+        }
+    }
+
+    return `Based on planetary strengths, your primary Dharma Type appears to be: The ${dominantType}.`;
 }
 
-/**
- * Determines the key Chakra themes based on the current Dasha.
- * @param {object} dashaData - The Dasha period data from Prokerala.
- * @returns {object} A profile of the most active chakra.
- */
-function getChakraProfile(dashaData) {
-    const currentMahaDashaLord = dashaData.dasha_periods[0].name.toLowerCase();
+function analyzeChakra(dashaData, planetData) {
+    // Simplified placeholder based on the framework.
+    if (!dashaData || !dashaData.data || !dashaData.data.dasha_periods) {
+        return {
+            name: "Unknown",
+            description: "Analysis Inconclusive: Insufficient Dasha data."
+        };
+    }
     
+    const currentDashaLord = dashaData.data.dasha_periods[0]?.name || 'Sun';
+
     const chakraMap = {
-        'sun': 'Solar Plexus',
-        'moon': 'Sacral',
-        'mars': 'Solar Plexus',
-        'mercury': 'Throat',
-        'jupiter': 'Heart',
-        'venus': 'Sacral',
-        'saturn': 'Root',
-        'rahu': 'Third Eye',
-        'ketu': 'Crown'
+        'Sun': { name: "Solar Plexus", description: "Your current life theme revolves around personal power, will, and self-esteem." },
+        'Moon': { name: "Sacral", description: "Your current life theme revolves around emotions, relationships, and creativity." },
+        'Mars': { name: "Solar Plexus", description: "Your current life theme revolves around assertion, power, and taking action." },
+        'Mercury': { name: "Throat", description: "Your current life theme revolves around communication, expression, and learning." },
+        'Jupiter': { name: "Third Eye", description: "Your current life theme revolves around wisdom, expansion, and higher knowledge." },
+        'Venus': { name: "Heart", description: "Your current life theme revolves around love, connection, and harmony." },
+        'Saturn': { name: "Root", description: "Your current life theme revolves around security, structure, and long-term stability." },
+        'Rahu': { name: "Third Eye", description: "Your current life theme revolves around ambition, future goals, and unconventional thinking." },
+        'Ketu': { name: "Crown", description: "Your current life theme revolves around spirituality, letting go, and past influences." }
     };
 
-    const activeChakra = chakraMap[currentMahaDashaLord] || 'Unknown';
-
-    return {
-        activeDashaLord: currentMahaDashaLord,
-        primaryChakraTheme: activeChakra,
-        description: `Your current life chapter (Dasha) is ruled by ${currentMahaDashaLord}, highlighting themes related to the ${activeChakra} Chakra.`
-    };
+    return chakraMap[currentDashaLord] || chakraMap['Sun'];
 }
 
-module.exports = { getDharmaType, getChakraProfile };
+// FIX: Export the functions so they can be used by other files.
+module.exports = {
+    analyzeDharmaType,
+    analyzeChakra
+};
+
